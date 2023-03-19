@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 namespace BoA\Plugins\Editor\Video;
 
 use BoA\Core\Http\HTMLWriter;
@@ -110,7 +110,7 @@ class VideoTranscoderTask implements ITask {
     }
 
     /**
-    * 
+    *
     */
     private function readConfiguration() {
         if (!isset($this->_plugin)) return;
@@ -132,13 +132,13 @@ class VideoTranscoderTask implements ITask {
                 $this->availableSizes[$key] =  [$width, $height];
             }
         }
-        
+
         $this->generateThumbs = $config["MISC_THUMBNAILS"];
         $this->generatePreview = $config["MISC_PREVIEW"];
     }
 
     /**
-    * 
+    *
     */
     private function prepareExtensionsFilter() {
         $extensions = explode(",", $this->extensions);
@@ -174,14 +174,8 @@ class VideoTranscoderTask implements ITask {
 
         $repo = array("path" => $path, "altpath" => $alternatepath);
 
-        $rootsuffix = $repository->getOption("DCOFOLDER_SUFFIX");
+        $entries = glob_recursive($path . "/" . str_repeat('?', 36) . '@*' . "/content/*." . $this->extensions, GLOB_NOSORT|GLOB_BRACE);
 
-        if (empty($rootsuffix)) {
-            $rootsuffix = DCOFOLDER_SUFFIX;
-        }
-
-        $entries = glob_recursive($path . "/" . str_repeat('?', 36) . $rootsuffix . "/content/*." . $this->extensions, GLOB_NOSORT|GLOB_BRACE);
-        
         foreach ($entries as $filename) {
             $this->makeStreamingReady($filename, $repo);
         }
