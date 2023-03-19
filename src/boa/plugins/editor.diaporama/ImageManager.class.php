@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 namespace BoA\Plugins\Editor\Diaporama;
 
 defined('APP_EXEC') or die( 'Access not allowed');
@@ -117,7 +117,7 @@ class ImageManager {
 
         list ($nw, $nh, $dst_x, $dst_y) = $this->getDimensions($width, $height);
         $new_image = imagecreatetruecolor($width, $height);
-        
+
         imagecopyresampled($new_image, $this->getImage(), $dst_x, $dst_y, 0, 0, $nw, $nh, $this->imageinfo->width, $this->imageinfo->height);
         imagejpeg($new_image, $output);
         imagedestroy($new_image);
@@ -129,7 +129,7 @@ class ImageManager {
 
         list ($nw, $nh, $dst_x, $dst_y) = $this->getDimensions($width, $height);
         $new_image = imagecreatetruecolor($width, $height);
-        
+
         imagecopyresampled($new_image, $this->getImage(), $dst_x, $dst_y, 0, 0, $nw, $nh, $this->imageinfo->width, $this->imageinfo->height);
         imagegif($new_image, $output);
         imagedestroy($new_image);
@@ -148,7 +148,7 @@ class ImageManager {
         return $info;
     }
 
-    private function getImage() {        
+    private function getImage() {
         if (isset($this->imageinfo->resource)) {
             return $this->imageinfo->resource;
         }

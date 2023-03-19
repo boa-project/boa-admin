@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 namespace BoA\Plugins\Editor\Diaporama;
 
 use BoA\Core\Http\HTMLWriter;
@@ -108,7 +108,7 @@ class ImageProcessorTask implements ITask {
     }
 
     /**
-    * 
+    *
     */
     private function readConfiguration() {
         if (!isset($this->_plugin)) return;
@@ -133,12 +133,12 @@ class ImageProcessorTask implements ITask {
                 list($width, $height) = explode("x", strtolower($value));
                 $this->availableSizes[$key] =  [$width, $height];
             }
-        }        
+        }
         //$this->generateThumbs = $config["MISC_THUMBNAILS"];
     }
 
     /**
-    * 
+    *
     */
     private function prepareExtensionsFilter() {
         $extensions = explode(",", $this->extensions);
@@ -174,14 +174,8 @@ class ImageProcessorTask implements ITask {
 
         $repo = array("path" => $path, "altpath" => $alternatepath);
 
-        $rootsuffix = $repository->getOption("DCOFOLDER_SUFFIX");
+        $entries = glob_recursive($path . "/" . str_repeat('?', 36) . "@*/content/*." . $this->extensions, GLOB_NOSORT|GLOB_BRACE);
 
-        if (empty($rootsuffix)) {
-            $rootsuffix = DCOFOLDER_SUFFIX;
-        }
-
-        $entries = glob_recursive($path . "/" . str_repeat('?', 36) . $rootsuffix . "/content/*." . $this->extensions, GLOB_NOSORT|GLOB_BRACE);
-        
         foreach ($entries as $filename) {
             $this->makePreviewReady($filename, $repo);
         }
