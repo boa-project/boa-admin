@@ -10,8 +10,8 @@
     <client_settings icon="plugins/access.dco/icon.png">
         <resources>
             <i18n namespace="access_dco" path="access.dco/i18n"/>
-            <js file="plugins/access.dco/DcoManager.class.js" className="DcoManager"/>      
-            <js file="plugins/access.dco/ManifestEditor.class.js" className="ManifestEditor"/>      
+            <js file="plugins/access.dco/DcoManager.class.js" className="DcoManager"/>
+            <js file="plugins/access.dco/ManifestEditor.class.js" className="ManifestEditor"/>
         </resources>
     </client_settings>
 	<server_settings>
@@ -20,11 +20,12 @@
         <param name="CHMOD_VALUE" type="string" label="CONF_MESSAGE[File Creation Mask]" description="CONF_MESSAGE[Optionnaly apply a chmod operation. Value must be numeric, like 0777, 0644, etc.]" default="0666"/>
         <param name="PURGE_AFTER" type="integer" label="CONF_MESSAGE[Purge Days]" description="CONF_MESSAGE[Option to purge documents after a given number of days. This require a manual set up of a CRON task. Leave to 0 if you don't wan't to use this feature.]" default="0"/>
         <param name="DATA_TEMPLATE" type="string" label="CONF_MESSAGE[Data template]" description="CONF_MESSAGE[Path to a directory on the filesystem whose content will be copied to the repository the first time it is loaded.]" default=""/>
-        <param name="DCOFOLDER_SUFFIX" type="string" label="CONF_MESSAGE[DCO folder suffix]" description="CONF_MESSAGE[Suffix to use when creating digital content objects folder]" default="@boa.udea.edu.co" editable="false"/>
+        <param name="DCOFOLDER_SUFFIX" type="string" label="CONF_MESSAGE[DCO folder suffix]" description="CONF_MESSAGE[Suffix to use when creating digital content objects folder]" default="" />
         <global_param name="PROBE_REAL_SIZE" type="boolean" label="CONF_MESSAGE[Real Size Probing]" description="CONF_MESSAGE[Use system command line to get the filesize instead of php built-in function (fixes the 2Go limitation)]" default="false"/>
         <global_param name="USE_POSIX" type="boolean" label="CONF_MESSAGE[Use POSIX]" description="CONF_MESSAGE[Use php POSIX extension to read files permissions. Only works on *nix systems.]" default="false"/>
         <global_param name="USE_XSENDFILE" type="boolean" label="CONF_MESSAGE[X-SendFile Active]" description="CONF_MESSAGE[Delegates all download operations to the webserver using the X-SendFile header. Warning, this is an external module to install for Apache. Module is active by default in Lighttpd. Warning, you have to manually add the folders where files will be downloaded in the module configuration (XSendFilePath directive)]" default="false"/>
         <global_param group="MIXIN_MESSAGE[Metadata and indexation]" name="DEFAULT_METASOURCES" type="string" label="MIXIN_MESSAGE[Default Metasources]" description="MIXIN_MESSAGE[Comma separated list of metastore and meta plugins, that will be automatically applied to all repositories created with this driver]" mandatory="false" default="metastore.serial,meta.filehasher,index.lucene,meta.lom"/>
+        <global_param name="DCOFOLDER_SUFFIX" type="string" label="MIXIN_MESSAGE[Default DCO suffix]" description="MIXIN_MESSAGE[Default DCO folder suffix when a DCO is created, starting with @, eg: @boaproject.net]" mandatory="false" default=""/>
         <global_param group="MIXIN_MESSAGE[Filesystem Commons]" name="SHOW_HIDDEN_FILES" type="boolean" label="MIXIN_MESSAGE[Show hidden files]" description="MIXIN_MESSAGE[Show files beginning with a .]" default="false" editable="false"/>
 	</server_settings>
 	<registry_contributions>
@@ -43,7 +44,7 @@
 			</component_config>
 			<component_config className="FoldersTree">
 				<property name="display" value="dz"/>
-			</component_config>			
+			</component_config>
 		</client_configs>
 		<external_file filename="access.dco/dcoActions.xml" include="client_configs/*" exclude=""/>
     <hooks>

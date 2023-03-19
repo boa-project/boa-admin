@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -50,7 +50,9 @@ use BoA\Plugins\Core\Log\Logger;
 
 defined('APP_EXEC') or die( 'Access not allowed');
 
-define("DCOFOLDER_SUFFIX", "@boa.udea.edu.co");
+if (!defined("DCOFOLDER_SUFFIX")) {
+    define("DCOFOLDER_SUFFIX", "@boaproject.net");
+}
 
 /**
  * Plugin to access a filesystem. Most "FS" like driver (even remote ones)
@@ -80,12 +82,19 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             $this->driverConf = array();
         }
         if(isset($this->pluginConf["PROBE_REAL_SIZE"])){
-            // PASS IT TO THE WRAPPER 
+            // PASS IT TO THE WRAPPER
             ConfService::setConf("PROBE_REAL_SIZE", $this->pluginConf["PROBE_REAL_SIZE"]);
         }
-        if (!isset($this->driverConf["DCOFOLDER_SUFFIX"])){
+        if (empty($this->driverConf["DCOFOLDER_SUFFIX"])){
             $this->driverConf["DCOFOLDER_SUFFIX"] = DCOFOLDER_SUFFIX;
         }
+
+        // Load repository custom suffix.
+        $suffix = trim($this->repository->getOption("DCOFOLDER_SUFFIX"));
+        if (!empty($suffix) && $suffix != '@' && strpos($suffix, '@') === 0) {
+            $this->driverConf["DCOFOLDER_SUFFIX"] = $suffix;
+        }
+
         $create = $this->repository->getOption("CREATE");
         $path = $this->repository->getOption("PATH");
         $recycle = $this->repository->getOption("RECYCLE_BIN");
@@ -268,13 +277,13 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 $fileId = $this->urlBase.$selection->getUniqueFile();
                 $sessionKey = "chunk_file_".md5($fileId.time());
                 $totalSize = $this->filesystemFileSize($fileId);
-                $chunkSize = intval ( $totalSize / $chunkCount ); 
+                $chunkSize = intval ( $totalSize / $chunkCount );
                 $realFile  = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $fileId, true);
                 $chunkData = array(
                     "localname"   => basename($fileId),
                     "chunk_count" => $chunkCount,
                     "chunk_size"  => $chunkSize,
-                    "total_size"  => $totalSize, 
+                    "total_size"  => $totalSize,
                     "file_id"     => $sessionKey
                 );
                 $_SESSION[$sessionKey] = array_merge($chunkData, array("file"=>$realFile));
@@ -365,7 +374,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
 
                 break;
 
-            case "put_content": 
+            case "put_content":
                 if(!isset($httpVars["content"])) break;
                 // Load "code" variable directly from POST array, do not "securePath" or "sanitize"...
                 $code = $httpVars["content"];
@@ -521,8 +530,8 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                     header('Cache-Control: no-cache');
                     print(json_encode(array("LIST" => $specs)));
                 }
-                break;            
-      
+                break;
+
             case "editdco":
                 $selection = new UserSelection();
                 $selection->initFromHttpVars();
@@ -846,7 +855,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                         readfile($file);
                     }
                 }else if(isSet($httpVars["binary_id"])){
-                    
+
                     $this->loadBinary(array(), $httpVars["binary_id"]);
                 }
             break;
@@ -1055,15 +1064,15 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         }
         if(!$lsOptions[$nodeType]) return false;
         if($nodeType == "d"){
-            if(RecycleBinManager::recycleEnabled() 
+            if(RecycleBinManager::recycleEnabled()
                 && $nodePath."/".$nodeName == RecycleBinManager::getRecyclePath()){
                     return false;
                 }
             return !$this->filterFolder($nodeName);
         }else{
             if($nodeName == "." || $nodeName == "..") return false;
-            if(RecycleBinManager::recycleEnabled() 
-                && $nodePath == RecycleBinManager::getRecyclePath() 
+            if(RecycleBinManager::recycleEnabled()
+                && $nodePath == RecycleBinManager::getRecyclePath()
                 && $nodeName == RecycleBinManager::getCacheFileName()){
                 return false;
             }
@@ -1126,8 +1135,8 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         set_exception_handler(array($this, 'download_exception_handler'));
         set_error_handler(array($this, 'download_exception_handler'));
         // required for IE, otherwise Content-disposition is ignored
-        if(ini_get('zlib.output_compression')) { 
-         Utils::safeIniSet('zlib.output_compression', 'Off'); 
+        if(ini_get('zlib.output_compression')) {
+         Utils::safeIniSet('zlib.output_compression', 'Off');
         }
 
         $isFile = !$data && !$gzip;
@@ -1295,7 +1304,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         $count = 0;
         while (strlen($file = readdir($handle)) > 0)
         {
-            if($file != "." && $file !=".." 
+            if($file != "." && $file !=".."
                 && !(Utils::isHidden($file) && !$this->driverConf["SHOW_HIDDEN_FILES"])){
                 if($foldersOnly && is_file($dirName."/".$file)) continue;
                 $count++;
@@ -1352,7 +1361,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         $zipLocalPath = $selection->getZipLocalPath(true);
         if(strlen($zipLocalPath)>1 && $zipLocalPath[0] == "/") $zipLocalPath = substr($zipLocalPath, 1)."/";
         $files = $selection->getFiles();
-        $newFiles = array();    
+        $newFiles = array();
         $realZipFile = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $this->urlBase.$zipPath);
         $archive = new \PclZip($realZipFile);
         $content = $archive->listContent();
@@ -1369,7 +1378,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 }
                 if(substr_count(substr($fileName, 0, strlen($fileName) - 2), "/") == 0) {
                     array_push($newFiles, $zipItem["stored_filename"]);
-                }  
+                }
             }
         }
         Logger::debug("Archive", $files);
@@ -1377,13 +1386,13 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         Logger::debug("Extract", array($realDestination, $realZipFile, $files, $zipLocalPath));
         if(count($files) == 0) {
             $result = $archive->extract(
-                                    PCLZIP_OPT_PATH, $realDestination, 
+                                    PCLZIP_OPT_PATH, $realDestination,
                                     PCLZIP_OPT_REMOVE_PATH, $zipLocalPath);
 
-           $selection->setFiles($newFiles);    
+           $selection->setFiles($newFiles);
         } else {
-            $result = $archive->extract(PCLZIP_OPT_BY_NAME, $files, 
-                                    PCLZIP_OPT_PATH, $realDestination."/".$zipLocalPath, 
+            $result = $archive->extract(PCLZIP_OPT_BY_NAME, $files,
+                                    PCLZIP_OPT_PATH, $realDestination."/".$zipLocalPath,
                                     PCLZIP_OPT_REMOVE_PATH, $zipLocalPath);
         }
         if($result <= 0){
@@ -1441,7 +1450,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         }
         if(file_exists($new))
         {
-            throw new ApplicationException("$filename_new $mess[43]"); 
+            throw new ApplicationException("$filename_new $mess[43]");
         }
         if(!file_exists($old))
         {
@@ -1484,7 +1493,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         }
         if(file_exists($this->urlBase."$crtDir/$newDirName"))
         {
-            return "$mess[40]"; 
+            return "$mess[40]";
         }
         if(!$this->isWriteable($this->urlBase."$crtDir"))
         {
@@ -1567,7 +1576,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             {
                 $logMessages[]="$mess[38] ".SystemTextEncoding::toUTF8($selectedFile)." $mess[44].";
             }
-            else 
+            else
             {
                 $logMessages[]="$mess[34] ".SystemTextEncoding::toUTF8($selectedFile)." $mess[44].";
             }
@@ -1635,7 +1644,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 Controller::applyHook("node.change", array(new ManifestNode($realSrcFile), new ManifestNode($destFile), !$move));
             }
         }
-        else 
+        else
         {
             if($move){
                 Controller::applyHook("node.before_path_change", array(new ManifestNode($realSrcFile)));
@@ -1680,7 +1689,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             {
                 $success[] = $mess[117]." ".SystemTextEncoding::toUTF8(basename($srcFile))." ".$messagePart." (".SystemTextEncoding::toUTF8($dirRes)." ".$mess[116].") ";
             }
-            else 
+            else
             {
                 $success[] = $mess[34]." ".SystemTextEncoding::toUTF8(basename($srcFile))." ".$messagePart;
             }
@@ -1695,7 +1704,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             {
                 $success[] = $mess[117]." ".SystemTextEncoding::toUTF8(basename($srcFile))." ".$mess[73]." ".SystemTextEncoding::toUTF8($destDir)." (".SystemTextEncoding::toUTF8($dirRes)." ".$mess[116].")";
             }
-            else 
+            else
             {
                 $success[] = $mess[34]." ".SystemTextEncoding::toUTF8(basename($srcFile))." ".$mess[73]." ".SystemTextEncoding::toUTF8($destDir);
             }
@@ -1715,18 +1724,18 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         //$verbose = true;
         $recurse = array();
         if(!is_dir($dstdir)) mkdir($dstdir);
-        if($curdir = opendir($srcdir)) 
+        if($curdir = opendir($srcdir))
         {
-            while($file = readdir($curdir)) 
+            while($file = readdir($curdir))
             {
-                if($file != '.' && $file != '..') 
+                if($file != '.' && $file != '..')
                 {
                     $srcfile = $srcdir . "/" . $file;
                     $dstfile = $dstdir . "/" . $file;
-                    if(is_file($srcfile)) 
+                    if(is_file($srcfile))
                     {
                         if(is_file($dstfile)) $ow = filemtime($srcfile) - filemtime($dstfile); else $ow = 1;
-                        if($ow > 0) 
+                        if($ow > 0)
                         {
                             try {
                                 if($convertSrcFile) $tmpPath = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $srcfile);
@@ -1781,14 +1790,14 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 {
                     $this->deldir("$location/$file");
                     if(file_exists("$location/$file")){
-                        rmdir("$location/$file"); 
+                        rmdir("$location/$file");
                     }
                     unset($file);
                 }
                 elseif (!is_dir("$location/$file"))
                 {
                     if(file_exists("$location/$file")){
-                        self::myUnlink("$location/$file"); 
+                        self::myUnlink("$location/$file");
                     }
                     unset($file);
                 }
@@ -1812,7 +1821,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
     }
 
     /**
-     * Change file permissions 
+     * Change file permissions
      *
      * @param String $path
      * @param String $chmodValue
@@ -1873,7 +1882,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
     public static $filteringDriverInstance;
     /**
      * @return zipfile
-     */ 
+     */
     function makeZip ($src, $dest, $basedir)
     {
         @set_time_limit(0);
@@ -1948,8 +1957,8 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
     function makeSharedRepositoryOptions($httpVars, $repository){
         $newOptions = array(
             "PATH" => $repository->getOption("PATH").Utils::decodeSecureMagic($httpVars["file"]),
-            "CREATE" => false, 
-            "RECYCLE_BIN" => "", 
+            "CREATE" => false,
+            "RECYCLE_BIN" => "",
             "DEFAULT_RIGHTS" => "");
         if($repository->getOption("USE_SESSION_CREDENTIALS")===true){
             $newOptions["ENCODED_CREDENTIALS"] = Credential::getEncodedCredentialString();
@@ -1960,15 +1969,15 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
     function zipPreAddCallback($value, $header){
         if(DcoAccessDriver::$filteringDriverInstance == null) return true;
         $search = $header["filename"];
-        return !(DcoAccessDriver::$filteringDriverInstance->filterFile($search) 
+        return !(DcoAccessDriver::$filteringDriverInstance->filterFile($search)
         || DcoAccessDriver::$filteringDriverInstance->filterFolder($search, "contains"));
     }
 
     function renameBookmark($oldNode, $newNode){
-        if ($oldNode == null) return;        
-        $loggedUser = AuthService::getLoggedUser();        
+        if ($oldNode == null) return;
+        $loggedUser = AuthService::getLoggedUser();
         if ($loggedUser == null) return;
-        
+
         $oldpath = $oldNode->getPath();
         if ($loggedUser->removeBookmark($oldpath)){
             $loggedUser->addBookmark($newNode->getPath());
@@ -2050,8 +2059,8 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         if ($oldIconId == $newIconId) return; //There is nothing to do.
 
         if ($oldIconId != null) { //need to delete oldIconId
-            $targetPath = $path."/src/".$oldIconId;    
-            @unlink($targetPath);        
+            $targetPath = $path."/src/".$oldIconId;
+            @unlink($targetPath);
         }
 
         if ($newIconId != null) { //need to save the newIconId
@@ -2094,7 +2103,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             Logger::logAction("ERROR : setObjectEntryPoint : Corrupted manifest file : " . $path, "");
             return $mess["access_dco.set_entry_point_manifest_error"];
         }
-        
+
         array_splice($parts, 0, 3);
         $path = implode('/', $parts);
         $json->manifest->entrypoint = $path;
