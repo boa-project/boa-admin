@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -67,7 +67,7 @@ class XMLWriter
 		}
 		self::$headerSent = $docNode;
 		print("<$docNode $attString>");
-		
+
 	}
 	/**
      * Outputs a closing root not (</tree>)
@@ -89,7 +89,7 @@ class XMLWriter
 	static function write($data, $print){
 		if($print) {
 			print($data);
-			return "";		
+			return "";
 		}else{
 			return $data;
 		}
@@ -105,7 +105,7 @@ class XMLWriter
      * @return void
      */
 	static function renderPaginationData($count, $currentPage, $totalPages, $dirsCount = -1){
-		$string = '<pagination count="'.$count.'" total="'.$totalPages.'" current="'.$currentPage.'" overflowMessage="306" icon="folder.png" openicon="folder_open.png" dirsCount="'.$dirsCount.'"/>';		
+		$string = '<pagination count="'.$count.'" total="'.$totalPages.'" current="'.$currentPage.'" overflowMessage="306" icon="folder.png" openicon="folder_open.png" dirsCount="'.$dirsCount.'"/>';
 		XMLWriter::write($string, true);
 	}
 	/**
@@ -210,6 +210,7 @@ class XMLWriter
 		if(error_reporting() == 0) return ;
 		if(ConfService::getConf("SERVER_DEBUG")){
 			$message = "$message in $fichier (l.$ligne)";
+            //debug_print_backtrace();
 		}
         try{
             Logger::logAction("error", array("message" => $message));
@@ -225,7 +226,7 @@ class XMLWriter
 		XMLWriter::close();
 		exit(1);
 	}
-	
+
 	/**
 	 * Catch exceptions, @see catchError
 	 * @param Exception $exception
@@ -234,7 +235,7 @@ class XMLWriter
         try{
             XMLWriter::catchError($exception->getCode(), SystemTextEncoding::fromUTF8($exception->getMessage()), $exception->getFile(), $exception->getLine(), null);
         }catch(\Exception $innerEx){
-            print get_class($innerEx)." thrown within the exception handler! Message was: ".$innerEx->getMessage()." in ".$innerEx->getFile()." on line ".$innerEx->getLine()." ".$innerEx->getTraceAsString();            
+            print get_class($innerEx)." thrown within the exception handler! Message was: ".$innerEx->getMessage()." in ".$innerEx->getFile()." on line ".$innerEx->getLine()." ".$innerEx->getTraceAsString();
         }
 	}
 	/**
@@ -266,7 +267,7 @@ class XMLWriter
         $xml = str_replace("APP_REMOTE_AUTH", "false", $xml);
         $xml = str_replace("APP_NOT_REMOTE_AUTH", "true", $xml);
         $xml = str_replace("APP_ALL_MESSAGES", "MessageHash=".json_encode(ConfService::getMessages()).";", $xml);
-		
+
 		if(preg_match_all("/APP_MESSAGE(\[.*?\])/", $xml, $matches, PREG_SET_ORDER)){
 			foreach($matches as $match){
 				$messId = str_replace("]", "", str_replace("[", "", $match[1]));
@@ -407,7 +408,7 @@ class XMLWriter
 			$data .= XMLWriter::write("<param name=\"$paramName\" value=\"$paramValue\"/>", $print);
 		}
 		$data .= XMLWriter::write("</trigger_bg_action>", $print);
-		return $data;		
+		return $data;
 	}
 
     static function triggerBgJSAction($jsCode, $messageId, $print=true, $delay = 0){
@@ -463,7 +464,7 @@ class XMLWriter
      */
 	static function sendMessage($logMessage, $errorMessage, $print = true)
 	{
-		$messageType = ""; 
+		$messageType = "";
 		$message = "";
 		if($errorMessage == null)
 		{
@@ -506,7 +507,7 @@ class XMLWriter
 				$buffer.="<active_repo id=\"".ConfService::getCurrentRepositoryId()."\" write=\"1\" read=\"1\"/>";
 			}
 			$buffer.= XMLWriter::writeRepositoriesData(null, $details);
-			$buffer.="</user>";	
+			$buffer.="</user>";
 		}else if($loggedUser != null){
             $lock = $loggedUser->getLock();
 			$buffer.="<user id=\"".$loggedUser->id."\">";
@@ -548,7 +549,7 @@ class XMLWriter
 			}
 			$buffer.="</user>";
 		}
-		return $buffer;		
+		return $buffer;
 	}
 	/**
      * Write the repositories access rights in XML format
@@ -628,6 +629,6 @@ class XMLWriter
 		}
 		print("<logging_result value=\"$result\"$remString/>");
 	}
-	
+
 }
 

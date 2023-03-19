@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -37,7 +37,7 @@ $mess=array(
 "4" => "Poca importancia",
 "5" => "Pendiente",
 "6" => "A revisar",
-"7" => "Importante", 
+"7" => "Importante",
 "8" => "Urgente",
 "9" => "Especificaciones",
 "10" => "Seleccione una especificación para ver y editar su configuración. Haga clic en el botón nueva para agregar una especificación",
@@ -796,5 +796,11 @@ $mess=array(
 "optionset.formats.video/x-ms-asf" => "Video ASF",
 "optionset.formats.video/x-ms-wmv" => "Video WMV",
 "optionset.formats.video/x-msvideo" => "Video AVI",
+"optionset.formats.application/tepuy-tpl" => "Tepuy - Plantilla",
+"optionset.formats.application/tepuy" => "Tepuy - Paquete",
+"optionset.taxon_path_general.learning" => "Educación",
+"optionset.taxon_path_general.tech" => "Tecnología",
+"optionset.taxon_path_general.entertainment" => "Entretenimiento",
+"optionset.taxon_path_general.other" => "Otro",
 
 );

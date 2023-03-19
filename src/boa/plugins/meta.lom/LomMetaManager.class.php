@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -66,13 +66,13 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
 
     public function initMeta($accessDriver){
         $this->accessDriver = $accessDriver;
-        parent::init($this->options);    
+        parent::init($this->options);
     }
-        
+
     protected function getMetaDefinition(){
         return array();
     }
-    
+
     /**
      *
      * @param ManifestNode $node
@@ -99,14 +99,14 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         $metadata = array("lommetadata" => json_encode($meta->metadata));
         if ($meta->manifest && ($meta->manifest->type || $meta->manifest->is_a)){
             $metadata["lomtype"] = $meta->manifest->is_a;
-        } 
+        }
 
         if (!$isRoot){
             $metadata["status_id"] = $meta->manifest->status;
             $metadata["status"] = $this->mess["access_dco.".$meta->manifest->status];
             $metadata["lastupdated"] = $meta->manifest->lastupdated;
             if (!empty($meta->manifest->lastpublished)){
-                $metadata["lastpublished"] = $meta->manifest->lastpublished;    
+                $metadata["lastpublished"] = $meta->manifest->lastpublished;
             }
             else {
                 $metadata["lastpublished"] = 0;
@@ -120,7 +120,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             else {
                 $overlay = (isset($overlay)?$overlay.",":"")."ok.png";
             }
-            
+
         }
         else if ($status == self::INPROGRESS_STATUS) {
             $overlay = (isset($overlay)?$overlay.",":"")."alert.png";
@@ -130,9 +130,9 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         }
         $node->mergeMetadata($metadata);
     }
-    
+
     /**
-     * 
+     *
      * @param ManifestNode $oldFile
      * @param ManifestNode $newFile
      * @param Boolean $copy
@@ -140,7 +140,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
     public function updateMetaLocation($oldFile, $newFile = null, $copy = false){
         if($oldFile == null) return;
             if(!$copy && $this->metaStore->inherentMetaMove()) return;
-        
+
         $oldMeta = $this->metaStore->retrieveMetadata($oldFile, "lom_meta", false, APP_METADATA_SCOPE_GLOBAL);
         if(!count($oldMeta)){
             return;
@@ -156,7 +156,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
     }
 
     public function onGet($action, $httpVars, $fileVars){
-        
+
         $mess = $this->mess = ConfService::getMessages();
         switch ($action) {
             case 'get_spec_by_id':
@@ -165,7 +165,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             case 'get_specs_list':
                 $this->loadSpecsAsJson();
                 break;
-            
+
             case 'mkdco':
                 XMLWriter::header("output");
                 $messtmp="";
@@ -230,7 +230,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         }
         return $list;
     }
-    
+
     public function getSpecById($id, $print=true){
         $specsPath = APP_DATA_PATH."/plugins/meta.lom/specs";
 
@@ -281,7 +281,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         header('Cache-Control: no-cache');
         print(json_encode(array("LIST" => $list)));
     }
-    
+
     private function parseParameters(&$repDef, &$options, $userId = null, $globalBinaries = false){
         Utils::parseStandardFormParameters($repDef, $options, $userId, "DCO_", ($globalBinaries?array():null));
     }
@@ -303,7 +303,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
                 else {
                     $target = array();
                 }
-                
+
                 $itemsFound = true;
                 $index = 0;
                 while($itemsFound){
@@ -385,12 +385,12 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
                     }
                 }
                 if ($ret){
-                    $parent[$specField->nodeName] = $newObj;    
+                    $parent[$specField->nodeName] = $newObj;
                 }
                 return $ret;
             }
             $key = $parambasename."_".$specField->nodeName.$colrow;
-            if (array_key_exists($key, $meta)){                
+            if (array_key_exists($key, $meta)){
                 if ($translatable){
                     $parent[$specField->nodeName] = $this->getTranslations($meta[$key]);
                 }
@@ -554,7 +554,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         if (!$node->hasChildNodes()) return false;
 
         foreach ($node->childNodes as $child) {
-            if ($child->nodeType == XML_ELEMENT_NODE) return true;            
+            if ($child->nodeType == XML_ELEMENT_NODE) return true;
         }
         return false;
     }
@@ -617,7 +617,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             if(!AuthService::usersEnabled() && $user!=null && !$user->canWrite($repo->getId())){
                 throw new \Exception("You have no right on this action.");
             }
-            
+
             ob_start();
             ob_implicit_flush(true);
 
@@ -635,7 +635,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             $path = call_user_func(array($this->accessDriver->wrapperClassName, "getRealFSReference"), $path);
             $rootpath = call_user_func(array($this->accessDriver->wrapperClassName, "getRealFSReference"), $this->accessDriver->urlBase);
             $recursively = $httpVars["recursively"];
-            
+
             $pmeta = $this->getParentMeta($path, $rootpath);
 
             $all = $this->getFiles($path, preg_match('/true/i', $recursively));

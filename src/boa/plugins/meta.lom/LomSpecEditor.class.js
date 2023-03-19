@@ -14,7 +14,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -120,7 +120,7 @@ Class.create("LOMSpecEditor", {
         params.set("get_action", "get_specs_list");
         params.set("plugin_id", 'meta.lom');
         var connexion = new Connexion();
-        connexion.setParameters(params);        
+        connexion.setParameters(params);
         connexion.onComplete = function(transport){
             console.log('getting response');
             var specs = transport.responseJSON;
@@ -134,7 +134,7 @@ Class.create("LOMSpecEditor", {
         params.set("get_action", "get_plugin_manifest");
         params.set("plugin_id", 'meta.lom');
         var connexion = new Connexion();
-        connexion.setParameters(params);        
+        connexion.setParameters(params);
         connexion.onComplete = function(transport){
 
             var xmlData = transport.responseXML;
@@ -258,7 +258,7 @@ Class.create("LOMSpecEditor", {
      * @param field xmlNode|null
      * @param form Element|null Target form where to insert the meta entry fields
      */
-    prepareMetaFieldEntry(field, container, level, dicprefix){        
+    prepareMetaFieldEntry(field, container, level, dicprefix){
         var $this = this;
         var type = field.getAttribute('type');
         var fname = field.nodeName;
@@ -274,7 +274,7 @@ Class.create("LOMSpecEditor", {
             });
         }
         else {
-            var row = new Element('tr');        
+            var row = new Element('tr');
             row.insert(new Element('td', {className: 'level'+level}).insert(this.createFormControl({type:'label', meta:field, text: $this.getMetaNodeTranslation(field, dicprefix)})));
             row.insert(new Element('td', {className: 'text-center'}).insert(this.createFormControl({type:'checkbox', meta:field, name:fname+'_inuse'})));
             row.insert(new Element('td', {className: 'text-center'}).insert(this.createFormControl({type:'checkbox', meta:field, name:fname+'_visible'})));

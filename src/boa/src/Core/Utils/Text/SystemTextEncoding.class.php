@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -51,11 +51,11 @@ class SystemTextEncoding
 		// Due to iconv bug when dealing with text with non ASCII encoding for last char, we use this workaround http://fr.php.net/manual/fr/function.iconv.php#81494
 		if(function_exists("iconv"))
 		{
-		    
+
 			return iconv($inputCharset, $outputCharset, $text);
 		}else
 		{
-			$content = @htmlentities($text, ENT_QUOTES, $inputCharset);  
+			$content = @htmlentities($text, ENT_QUOTES, $inputCharset);
 			return @html_entity_decode($content, ENT_QUOTES , $outputCharset);
 		}
 	}
@@ -70,7 +70,7 @@ class SystemTextEncoding
 	static function parseCharset($locale)
 	{
 		$test = explode("@", $locale);
-		$locale = $test[0];		
+		$locale = $test[0];
 		$encoding = substr(strrchr($locale, "."), 1);
 		if (is_numeric($encoding))
 		{
@@ -79,7 +79,7 @@ class SystemTextEncoding
   			else $encoding = "CP".$encoding; // In other cases, PHP4 won't work anyway, so use CPxxxx encoding (that iconv supports)
 		} else if ($locale == "C")
 		{   // Locale not set correctly, most probable error cause is /etc/init.d/apache having "LANG=C" defined
-			// In any case, "C" is ASCII-7 bit so it's safe to use the extra bit as if it was UTF-8 
+			// In any case, "C" is ASCII-7 bit so it's safe to use the extra bit as if it was UTF-8
 			$encoding = "UTF-8";
 		}
 		if (!strlen($encoding)) $encoding = "UTF-8";
@@ -117,18 +117,18 @@ class SystemTextEncoding
 		$enc = SystemTextEncoding::getEncoding();
 	    return SystemTextEncoding::changeCharset("UTF-8", $enc, $filesystemElement);
 	}
-  
+
 	/**
      * This function is used when the server's PHP configuration is using magic quote
      * @param string $text
      * @return string
      */
-    static function magicDequote($text)
-    {
-	    // If the PHP server enables magic quotes, remove them
-	    if (function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc())
-	        return stripslashes($text);
-	    return $text;  
+    static function magicDequote($text) {
+        // Magic quotes was deprecated.
+        // If the PHP server enables magic quotes, remove them
+        //if (function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc())
+        //    return stripslashes($text);
+	    return $text;
     }
 
     /**
@@ -162,15 +162,15 @@ class SystemTextEncoding
      * @return bool
      */
 	static function isUtf8($string){
-    	return preg_match('%^(?: 
-	      [\x09\x0A\x0D\x20-\x7E]            # ASCII 
-	    | [\xC2-\xDF][\x80-\xBF]             # non-overlong 2-byte 
-	    | \xE0[\xA0-\xBF][\x80-\xBF]         # excluding overlongs 
-	    | [\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}  # straight 3-byte 
-	    | \xED[\x80-\x9F][\x80-\xBF]         # excluding surrogates 
-	    | \xF0[\x90-\xBF][\x80-\xBF]{2}      # planes 1-3 
-	    | [\xF1-\xF3][\x80-\xBF]{3}          # planes 4-15 
-	    | \xF4[\x80-\x8F][\x80-\xBF]{2}      # plane 16 
+    	return preg_match('%^(?:
+	      [\x09\x0A\x0D\x20-\x7E]            # ASCII
+	    | [\xC2-\xDF][\x80-\xBF]             # non-overlong 2-byte
+	    | \xE0[\xA0-\xBF][\x80-\xBF]         # excluding overlongs
+	    | [\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}  # straight 3-byte
+	    | \xED[\x80-\x9F][\x80-\xBF]         # excluding surrogates
+	    | \xF0[\x90-\xBF][\x80-\xBF]{2}      # planes 1-3
+	    | [\xF1-\xF3][\x80-\xBF]{3}          # planes 4-15
+	    | \xF4[\x80-\x8F][\x80-\xBF]{2}      # plane 16
 			)*$%xs', $string);
     }
 }

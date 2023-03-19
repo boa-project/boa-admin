@@ -14,7 +14,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -56,14 +56,14 @@ Class.create("LomMetaEditor", AbstractEditor, {
         params.set("get_action", "get_spec_by_id");
         params.set("spec_id", type);
         var connexion = new Connexion();
-        connexion.setParameters(params);        
+        connexion.setParameters(params);
         connexion.onComplete = function(transport){
             var xmlData = transport.responseXML;
             this.createSpecEditor(xmlData);
         }.bind(this);
         connexion.sendAsync();
     },
-    createSpecEditor: function(spec){        
+    createSpecEditor: function(spec){
         this.spec = spec;
         this.updateHeader();
         this.tab = new SimpleTabs(this.oForm.down("#categoryTabulator"));
@@ -73,7 +73,7 @@ Class.create("LomMetaEditor", AbstractEditor, {
         //set available languages
         var languages = this.getOptionSet('languages');
         this.formManager.setAvailableLanguages(languages);
-        
+
         $A(categories).each(function(cat){
             var pane = new Element("div");
             var catName = this.getMetaNodeTranslation(cat, 'meta.fields.');
@@ -91,8 +91,8 @@ Class.create("LomMetaEditor", AbstractEditor, {
         }.bind(this));
         modal.setCloseAction(function(){
             this.element.select(".meta_form_container").each(function(frm){
-                this.formManager.destroyForm(frm);    
-            }.bind(this));            
+                this.formManager.destroyForm(frm);
+            }.bind(this));
         }.bind(this));
 
         this.oForm.observe('form:language_changing', function (e){
@@ -196,14 +196,14 @@ Class.create("LomMetaEditor", AbstractEditor, {
         this.setDirty();
         if (!event || !event.target) return;
         var el = $(event.target);
-        if (!el || !el.match('.SF_input,.form-control')) return;        
+        if (!el || !el.match('.SF_input,.form-control')) return;
         var name = el.name;
         this.oForm.select('select[data-dependencies]').each(function(select){
             if (select.name == name) return;
-            var dependencies = select.retrieve('dependencies');            
+            var dependencies = select.retrieve('dependencies');
             var dep = dependencies && dependencies.get(name);
             if (!dep) return;
-            
+
             dep.value = el.value;
             dependencies.set(name, dep);
             select.store('dependencies', dependencies);
@@ -245,13 +245,45 @@ Class.create("LomMetaEditor", AbstractEditor, {
             var isRequired = field.getAttribute("required") === 'true';
             var isFixed = field.getAttribute("fixed") === 'true';
 
-            var nameSuffix = isContainer ? '' : fname+'.'; 
+            var nameSuffix = isContainer ? '' : fname+'.';
             var data = isContainer ? metadata : metadata[fname];
 
-            if (isCollection && !Object.isArray(data)){
+            // Load default values if metadata is empty or not has some property.
+            if (isCollection){
                 var value = field.getAttribute('defaultValue');
-                data = JSON.parse(value)||[];
-            }
+                if (value) {
+                    var defaultdata = JSON.parse(value)||[];
+
+                    if (Object.isArray(defaultdata)) {
+                        var initialize = false;
+                        if (!data) {
+                            data = [];
+                            data[0] = {};
+                            initialize = true;
+                        }
+
+                        defaultdata.forEach(item => {
+                            var keys = Object.entries(item);
+                            if (Object.isArray(keys)) {
+                                keys.forEach(([prop, v]) => {
+                                    if (initialize) {
+                                        data[0][prop] = v.default;
+                                    }
+                                    else {
+                                        data.forEach(item2 => {
+
+                                            if (!(prop in item2) || !item2[prop]) {
+                                                item2[prop] = v.default;
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                }
+             }
 
             $A(field.children).each(function(child){
                 options = this.prepareMetaFieldEntry(child, container, level+1, dicprefix+nameSuffix, (data||{}), values);
@@ -361,7 +393,7 @@ Class.create("LomMetaEditor", AbstractEditor, {
                     for(var i = 0; i < matches.length; i++){
                         var ph = options.name.split('.').slice(0,-1).join('.')+'.'+matches[i].slice(1, -1);
                         dependencies[ph] = { ph: matches[i], value: null };
-                        if (options.values && options.values.get(ph)){                            
+                        if (options.values && options.values.get(ph)){
                             dependencies[ph].value = options.values.get(ph);
                         }
                     }
@@ -396,7 +428,7 @@ Class.create("LomMetaEditor", AbstractEditor, {
                     settings.typeName = options.type;
                     settings.childs = childSettings;
                 }
-                else 
+                else
                     return {};
         }
         return settings;
@@ -486,7 +518,7 @@ Class.create("LomMetaEditor", AbstractEditor, {
             toSubmit.set("file", this._node.getPath());
             toSubmit.set('spec_id', this.getSpecId());
             app.actionBar.submitForm(this.oForm);
- 
+
             var conn = new Connexion();
             conn.setParameters(toSubmit);
             conn.setMethod("post");
@@ -510,7 +542,7 @@ Class.create("LomMetaEditor", AbstractEditor, {
                         else {
                             overlay += ',ok.png';
                         }
-                        
+
                     }
                     else {
                         overlay = 'ok.png';
@@ -557,11 +589,11 @@ Class.create("LomMetaEditor", AbstractEditor, {
         var overlay = meta.get('overlay_icon');
         if (overlay){
             if (/(,?)(alert|ok)\.png/.test(overlay)){
-                overlay = overlay.replace(/(,?)(alert|ok)\.png/, '$1alert.png');    
+                overlay = overlay.replace(/(,?)(alert|ok)\.png/, '$1alert.png');
             }
             else {
                 overlay += ',alert.png';
-            }                
+            }
         }
         else {
             overlay = (meta.get('is_file')?'dro.png,':'')+'alert.png';

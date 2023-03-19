@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -34,7 +34,7 @@ $mess=array(
 "4" => "LOM Low",
 "5" => "LOM Todo",
 "6" => "LOM Personal",
-"7" => "LOM Work", 
+"7" => "LOM Work",
 "8" => "LOM Important",
 "9" => "Specifications",
 "10" => "Select an specification to view or edit its configuration. Click New Spec button to add a new Specification",
@@ -730,6 +730,12 @@ $mess=array(
 "optionset.formats.video/x-ms-asf" => "Video ASF",
 "optionset.formats.video/x-ms-wmv" => "Video WMV",
 "optionset.formats.video/x-msvideo" => "Video AVI",
+"optionset.formats.application/tepuy-tpl" => "Tepuy template",
+"optionset.formats.application/tepuy" => "Tepuy package",
+"optionset.taxon_path_general.learning" => "Learning",
+"optionset.taxon_path_general.tech" => "Technology",
+"optionset.taxon_path_general.entertainment" => "Entertainment",
+"optionset.taxon_path_general.other" => "Other",
 
 
 );
