@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -74,7 +74,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             $this->driverConf = array();
         }
         if(isset($this->pluginConf["PROBE_REAL_SIZE"])){
-            // PASS IT TO THE WRAPPER 
+            // PASS IT TO THE WRAPPER
             ConfService::setConf("PROBE_REAL_SIZE", $this->pluginConf["PROBE_REAL_SIZE"]);
         }
         $create = $this->repository->getOption("CREATE");
@@ -247,13 +247,13 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 $fileId = $this->urlBase.$selection->getUniqueFile();
                 $sessionKey = "chunk_file_".md5($fileId.time());
                 $totalSize = $this->filesystemFileSize($fileId);
-                $chunkSize = intval ( $totalSize / $chunkCount ); 
+                $chunkSize = intval ( $totalSize / $chunkCount );
                 $realFile  = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $fileId, true);
                 $chunkData = array(
                     "localname"   => basename($fileId),
                     "chunk_count" => $chunkCount,
                     "chunk_size"  => $chunkSize,
-                    "total_size"  => $totalSize, 
+                    "total_size"  => $totalSize,
                     "file_id"     => $sessionKey
                 );
                 $_SESSION[$sessionKey] = array_merge($chunkData, array("file"=>$realFile));
@@ -344,7 +344,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
 
                 break;
 
-            case "put_content": 
+            case "put_content":
                 if(!isset($httpVars["content"])) break;
                 // Load "code" variable directly from POST array, do not "securePath" or "sanitize"...
                 $code = $httpVars["content"];
@@ -719,7 +719,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 if(!isSet($dir) || $dir == "/") $dir = "";
                 $lsOptions = $this->parseLsOptions((isSet($httpVars["options"])?$httpVars["options"]:"a"));
 
-                $startTime = microtime();
+                $startTime = microtime(true);
                 if(isSet($httpVars["file"])){
                     $uniqueFile = Utils::decodeSecureMagic($httpVars["file"]);
                 }
@@ -765,9 +765,9 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 }
                 if(isSet($totalPages) && isSet($crtPage)){
                     XMLWriter::renderPaginationData(
-                        $countFiles, 
-                        $crtPage, 
-                        $totalPages, 
+                        $countFiles,
+                        $crtPage,
+                        $totalPages,
                         $this->countFiles($path, TRUE)
                     );
                     if(!$lsOptions["f"]){
@@ -872,7 +872,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     }
                 }
 
-                Logger::debug("LS Time : ".intval((microtime()-$startTime)*1000)."ms");
+                Logger::debug("LS Time : ".intval((microtime(true)-$startTime)*1000)."ms");
 
                 XMLWriter::close();
                 return ;
@@ -1035,15 +1035,15 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         }
         if(!$lsOptions[$nodeType]) return false;
         if($nodeType == "d"){
-            if(RecycleBinManager::recycleEnabled() 
+            if(RecycleBinManager::recycleEnabled()
                 && $nodePath."/".$nodeName == RecycleBinManager::getRecyclePath()){
                     return false;
                 }
             return !$this->filterFolder($nodeName);
         }else{
             if($nodeName == "." || $nodeName == "..") return false;
-            if(RecycleBinManager::recycleEnabled() 
-                && $nodePath == RecycleBinManager::getRecyclePath() 
+            if(RecycleBinManager::recycleEnabled()
+                && $nodePath == RecycleBinManager::getRecyclePath()
                 && $nodeName == RecycleBinManager::getCacheFileName()){
                 return false;
             }
@@ -1106,8 +1106,8 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         set_exception_handler(array($this, 'download_exception_handler'));
         set_error_handler(array($this, 'download_exception_handler'));
         // required for IE, otherwise Content-disposition is ignored
-        if(ini_get('zlib.output_compression')) { 
-         Utils::safeIniSet('zlib.output_compression', 'Off'); 
+        if(ini_get('zlib.output_compression')) {
+         Utils::safeIniSet('zlib.output_compression', 'Off');
         }
 
         $isFile = !$data && !$gzip;
@@ -1275,7 +1275,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         $count = 0;
         while (strlen($file = readdir($handle)) > 0)
         {
-            if($file != "." && $file !=".." 
+            if($file != "." && $file !=".."
                 && !(Utils::isHidden($file) && !$this->driverConf["SHOW_HIDDEN_FILES"])){
                 if($foldersOnly && is_file($dirName."/".$file)) continue;
                 $count++;
@@ -1349,7 +1349,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 }
                 if(substr_count(substr($fileName, 0, strlen($fileName) - 2), "/") == 0) {
                     array_push($newFiles, $zipItem["stored_filename"]);
-                }                
+                }
             }
         }
         Logger::debug("Archive", $files);
@@ -1357,13 +1357,13 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         Logger::debug("Extract", array($realDestination, $realZipFile, $files, $zipLocalPath));
         if(count($files) == 0) {
             $result = $archive->extract(
-                                    PCLZIP_OPT_PATH, $realDestination, 
+                                    PCLZIP_OPT_PATH, $realDestination,
                                     PCLZIP_OPT_REMOVE_PATH, $zipLocalPath);
 
-           $selection->setFiles($newFiles);    
+           $selection->setFiles($newFiles);
         } else {
-            $result = $archive->extract(PCLZIP_OPT_BY_NAME, $files, 
-                                    PCLZIP_OPT_PATH, $realDestination."/".$zipLocalPath, 
+            $result = $archive->extract(PCLZIP_OPT_BY_NAME, $files,
+                                    PCLZIP_OPT_PATH, $realDestination."/".$zipLocalPath,
                                     PCLZIP_OPT_REMOVE_PATH, $zipLocalPath);
         }
 
@@ -1422,7 +1422,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         }
         if(file_exists($new))
         {
-            throw new ApplicationException("$filename_new $mess[43]"); 
+            throw new ApplicationException("$filename_new $mess[43]");
         }
         if(!file_exists($old))
         {
@@ -1465,7 +1465,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         }
         if(file_exists($this->urlBase."$crtDir/$newDirName"))
         {
-            return "$mess[40]"; 
+            return "$mess[40]";
         }
         if(!$this->isWriteable($this->urlBase."$crtDir"))
         {
@@ -1547,7 +1547,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             {
                 $logMessages[]="$mess[38] ".SystemTextEncoding::toUTF8($selectedFile)." $mess[44].";
             }
-            else 
+            else
             {
                 $logMessages[]="$mess[34] ".SystemTextEncoding::toUTF8($selectedFile)." $mess[44].";
             }
@@ -1615,7 +1615,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 Controller::applyHook("node.change", array(new ManifestNode($realSrcFile), new ManifestNode($destFile), !$move));
             }
         }
-        else 
+        else
         {
             if($move){
                 Controller::applyHook("node.before_path_change", array(new ManifestNode($realSrcFile)));
@@ -1660,7 +1660,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             {
                 $success[] = $mess[117]." ".SystemTextEncoding::toUTF8(basename($srcFile))." ".$messagePart." (".SystemTextEncoding::toUTF8($dirRes)." ".$mess[116].") ";
             }
-            else 
+            else
             {
                 $success[] = $mess[34]." ".SystemTextEncoding::toUTF8(basename($srcFile))." ".$messagePart;
             }
@@ -1675,7 +1675,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             {
                 $success[] = $mess[117]." ".SystemTextEncoding::toUTF8(basename($srcFile))." ".$mess[73]." ".SystemTextEncoding::toUTF8($destDir)." (".SystemTextEncoding::toUTF8($dirRes)." ".$mess[116].")";
             }
-            else 
+            else
             {
                 $success[] = $mess[34]." ".SystemTextEncoding::toUTF8(basename($srcFile))." ".$mess[73]." ".SystemTextEncoding::toUTF8($destDir);
             }
@@ -1695,18 +1695,18 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         //$verbose = true;
         $recurse = array();
         if(!is_dir($dstdir)) mkdir($dstdir);
-        if($curdir = opendir($srcdir)) 
+        if($curdir = opendir($srcdir))
         {
-            while($file = readdir($curdir)) 
+            while($file = readdir($curdir))
             {
-                if($file != '.' && $file != '..') 
+                if($file != '.' && $file != '..')
                 {
                     $srcfile = $srcdir . "/" . $file;
                     $dstfile = $dstdir . "/" . $file;
-                    if(is_file($srcfile)) 
+                    if(is_file($srcfile))
                     {
                         if(is_file($dstfile)) $ow = filemtime($srcfile) - filemtime($dstfile); else $ow = 1;
-                        if($ow > 0) 
+                        if($ow > 0)
                         {
                             try {
                                 if($convertSrcFile) $tmpPath = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $srcfile);
@@ -1761,14 +1761,14 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 {
                     $this->deldir("$location/$file");
                     if(file_exists("$location/$file")){
-                        rmdir("$location/$file"); 
+                        rmdir("$location/$file");
                     }
                     unset($file);
                 }
                 elseif (!is_dir("$location/$file"))
                 {
                     if(file_exists("$location/$file")){
-                        unlink("$location/$file"); 
+                        unlink("$location/$file");
                     }
                     unset($file);
                 }
@@ -1792,15 +1792,14 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
     }
 
     /**
-     * Change file permissions 
+     * Change file permissions
      *
      * @param String $path
      * @param String $chmodValue
      * @param Boolean $recursive
      * @param String $nodeType "both", "file", "dir"
      */
-    function chmod($path, $chmodValue, $recursive=false, $nodeType="both", &$changedFiles)
-    {
+    function chmod($path, $chmodValue, $recursive=false, $nodeType="both", &$changedFiles = []) {
         $realValue = octdec(ltrim($chmodValue, "0"));
         if(is_file($this->urlBase.$path)){
             if($nodeType=="both" || $nodeType=="file"){
@@ -1853,7 +1852,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
     public static $filteringDriverInstance;
     /**
      * @return zipfile
-     */ 
+     */
     function makeZip ($src, $dest, $basedir)
     {
         @set_time_limit(0);
@@ -1928,8 +1927,8 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
     function makeSharedRepositoryOptions($httpVars, $repository){
         $newOptions = array(
             "PATH" => $repository->getOption("PATH").Utils::decodeSecureMagic($httpVars["file"]),
-            "CREATE" => false, 
-            "RECYCLE_BIN" => "", 
+            "CREATE" => false,
+            "RECYCLE_BIN" => "",
             "DEFAULT_RIGHTS" => "");
         if($repository->getOption("USE_SESSION_CREDENTIALS")===true){
             $newOptions["ENCODED_CREDENTIALS"] = Credential::getEncodedCredentialString();
@@ -1940,7 +1939,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
     function zipPreAddCallback($value, $header){
         if(FsAccessDriver::$filteringDriverInstance == null) return true;
         $search = $header["filename"];
-        return !(FsAccessDriver::$filteringDriverInstance->filterFile($search) 
+        return !(FsAccessDriver::$filteringDriverInstance->filterFile($search)
         || FsAccessDriver::$filteringDriverInstance->filterFolder($search, "contains"));
     }
 }

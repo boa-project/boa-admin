@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 namespace BoA\Plugins\Core\Log;
 
 use BoA\Core\Plugins\Plugin;
@@ -24,11 +24,22 @@ use BoA\Core\Services\PluginsService;
 
 defined('APP_EXEC') or die( 'Access not allowed');
 
-define("LOG_LEVEL_DEBUG", "Debug");
-define("LOG_LEVEL_INFO", "Info");
-define("LOG_LEVEL_NOTICE", "Notice");
-define("LOG_LEVEL_WARNING", "Warning");
-define("LOG_LEVEL_ERROR", "Error");
+if (!defined('LOG_LEVEL_DEBUG')) {
+    define("LOG_LEVEL_DEBUG", "Debug");
+}
+if (!defined('LOG_LEVEL_INFO')) {
+    define("LOG_LEVEL_INFO", "Info");
+}
+if (!defined('LOG_LEVEL_NOTICE')) {
+    define("LOG_LEVEL_NOTICE", "Notice");
+}
+if (!defined('LOG_LEVEL_WARNING')) {
+    define("LOG_LEVEL_WARNING", "Warning");
+}
+if (!defined('LOG_LEVEL_ERROR')) {
+    define("LOG_LEVEL_ERROR", "Error");
+}
+
 /**
  * Provides static access to the logging mechanism
  *
@@ -82,8 +93,8 @@ class Logger extends Plugin {
 			$message.=$logger->arrayToString($params);
 		}else if(!empty($params)) {
 			$message .= print_r($params, true);
-		}		
-		$logger->write($message, LOG_LEVEL_DEBUG);				
+		}
+		$logger->write($message, LOG_LEVEL_DEBUG);
 	}
 
     /**
@@ -94,13 +105,13 @@ class Logger extends Plugin {
      * @return void
      */
 	public static function logAction($action, $params=array()){
-		$logger = self::getInstance();		
+		$logger = self::getInstance();
 		if($logger == null) return ;
-		$message = "$action\t";		
+		$message = "$action\t";
 		if(count($params)){
 			$message.=$logger->arrayToString($params);
-		}		
-		$logger->write($message, LOG_LEVEL_INFO);		
+		}
+		$logger->write($message, LOG_LEVEL_INFO);
 	}
 
     public static function getClientAdress(){
@@ -113,7 +124,7 @@ class Logger extends Plugin {
         }
         return $msg;
     }
-	
+
 	/**
 	 * returns an instance of the AbstractLogDriver object
 	 *
@@ -126,7 +137,7 @@ class Logger extends Plugin {
  	{
         return self::$loggerInstance;
  	}
-		
+
 }
 
 ?>

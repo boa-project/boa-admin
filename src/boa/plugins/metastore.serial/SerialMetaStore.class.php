@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -44,7 +44,7 @@ defined('APP_EXEC') or die( 'Access not allowed');
  * @subpackage Metastore
  */
 class SerialMetaStore extends Plugin implements MetaStoreProvider {
-  
+
   private static $currentMetaName;
   private static $metaCache;
   private static $fullMetaCache;
@@ -117,7 +117,7 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
     );
     //var_dump($metaCache);
     //var_dump($nameSpace);
-    if(!isSet(self::$metaCache[$nameSpace])) return array();    
+    if(!isSet(self::$metaCache[$nameSpace])) return array();
     else return self::$metaCache[$nameSpace];
   }
 
@@ -146,7 +146,7 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
     }
     $node->mergeMetadata($allMeta);
   }
-  
+
   protected function updateSecurityScope($metaFile, $repositoryId){
 
     $repo = ConfService::getRepositoryById($repositoryId);
@@ -170,7 +170,7 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
     }
     return $metaFile;
   }
-  
+
   /**
    * @param Node $node
    * @param String $scope
@@ -204,7 +204,7 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
     if(!isSet(self::$fullMetaCache[$metaFile])){
       self::$currentMetaName = $metaFile;
       $rawData = @file_get_contents($metaFile);
-      
+
       if($rawData !== false){
         if (preg_match("/^[\[\{]/",$rawData)) {
           self::$fullMetaCache[$metaFile] = json_decode($rawData, true);
@@ -218,7 +218,9 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
       if(isSet(self::$fullMetaCache[$metaFile][$fileKey][$userId])){
         self::$metaCache = self::$fullMetaCache[$metaFile][$fileKey][$userId];
       }else{
-        if($this->options["UPGRADE_FROM_METASERIAL"] == true && count(self::$fullMetaCache[$metaFile]) && !isSet(self::$fullMetaCache[$metaFile]["APP_METASTORE_UPGRADED"])){
+        if(isset($this->options["UPGRADE_FROM_METASERIAL"]) && $this->options["UPGRADE_FROM_METASERIAL"] == true &&
+            count(self::$fullMetaCache[$metaFile]) && !isSet(self::$fullMetaCache[$metaFile]["APP_METASTORE_UPGRADED"])){
+
           self::$fullMetaCache[$metaFile] = $this->upgradeDataFromMetaSerial(self::$fullMetaCache[$metaFile]);
           if(isSet(self::$fullMetaCache[$metaFile][$fileKey][$userId])){
             self::$metaCache = self::$fullMetaCache[$metaFile][$fileKey][$userId];
@@ -305,5 +307,5 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
   }
 
 
-  
+
 }

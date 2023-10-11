@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -45,7 +45,7 @@ interface FileWrapper
 	 * @param unknown_type $path
 	 */
     public static function getRealFSReference($path);
-    
+
     /**
      * Read a file (by chunks) and copy the data directly inside the given stream.
      *
@@ -53,14 +53,14 @@ interface FileWrapper
      * @param unknown_type $stream
      */
     public static function copyFileInStream($path, $stream);
-    
+
     /**
      * Chmod implementation for this type of access.
      *
      * @param unknown_type $path
      * @param unknown_type $chmodValue
      */
-    public static function changeMode($path, $chmodValue);	
+    public static function changeMode($path, $chmodValue);
 
     /**
      * Describe whether the current wrapper operates on a remote server or not.
@@ -214,5 +214,4 @@ interface FileWrapper
      * @return array
      */
     public function url_stat($path , $flags);
-} 
-?>
+}

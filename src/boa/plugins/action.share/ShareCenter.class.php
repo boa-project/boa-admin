@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -106,6 +106,11 @@ class ShareCenter extends Plugin{
 
     function init($options){
         parent::init($options);
+
+        if (!$this->repository) {
+            return;
+        }
+
         $this->repository = ConfService::getRepository();
         if(!is_a($this->repository->driverInstance, "BoA\Core\Access\FileWrapperProvider")){
             return;
@@ -371,7 +376,7 @@ class ShareCenter extends Plugin{
      * @return void
      */
     function nodeSharedMetadata(&$node){
-        if($this->accessDriver->getId() == "access.imap") return;
+        if($this->accessDriver && $this->accessDriver->getId() == "access.imap") return;
         $metadata = $node->retrieveMetadata("app_shared", true, APP_METADATA_SCOPE_REPOSITORY, true);
         if(count($metadata)){
             $eType = $node->isLeaf()?"file":"repository";
@@ -399,7 +404,7 @@ class ShareCenter extends Plugin{
 	 * @param ManifestNode $oldNode
 	 */
 	public function updateNodeSharedData($oldNode/*, $newNode = null, $copy = false*/){
-        if($this->accessDriver->getId() == "access.imap") return;
+        if($this->accessDriver && $this->accessDriver->getId() == "access.imap") return;
         if($oldNode == null || !$oldNode->hasMetaStore()) return;
         $metadata = $oldNode->retrieveMetadata("app_shared", true);
         if(count($metadata) && !empty($metadata["element"])){
@@ -640,7 +645,7 @@ class ShareCenter extends Plugin{
         $u = parse_url($_SERVER["REQUEST_URI"]);
         $shortHash = pathinfo(basename($u["path"]), PATHINFO_FILENAME);
 
-        if ( ($data["EXPIRE_TIME"] && time() > $data["EXPIRE_TIME"]) || 
+        if ( ($data["EXPIRE_TIME"] && time() > $data["EXPIRE_TIME"]) ||
             ($data["DOWNLOAD_LIMIT"] && $data["DOWNLOAD_LIMIT"]> 0 && $data["DOWNLOAD_LIMIT"] <= PublicletCounter::getCount($shortHash)) )
         {
             // Remove the publiclet, it's done

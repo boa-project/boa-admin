@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -45,14 +45,14 @@ defined('APP_EXEC') or die( 'Access not allowed');
  * @subpackage Core
  */
 class ConfService
-{   
+{
     private static $instance;
     private $errors = array();
     private $configs = array();
-    
+
     /**
      * @param PluginsService $pluginService
-     * @return AbstractConfDriver 
+     * @return AbstractConfDriver
      */
     public function confPluginSoftLoad($pluginService){
 
@@ -272,17 +272,17 @@ class ConfService
         $currentRepos = $this->getLoadedRepositories();
         if($rootDirIndex == -1){
             if(isSet($_SESSION['REPO_ID']) && array_key_exists($_SESSION['REPO_ID'], $currentRepos))
-            {           
+            {
                 $this->configs["REPOSITORY"] = $currentRepos[$_SESSION['REPO_ID']];
             }
-            else 
+            else
             {
                 $keys = array_keys($currentRepos);
                 $this->configs["REPOSITORY"] = $currentRepos[$keys[0]];
                 $_SESSION['REPO_ID'] = $keys[0];
             }
         }
-        else 
+        else
         {
             if($temporary && isSet($_SESSION['REPO_ID'])){
                 $crtId = $_SESSION['REPO_ID'];
@@ -291,15 +291,17 @@ class ConfService
                     //Logger::debug("switching to $rootDirIndex, registering $crtId");
                 }
             }else{
-                $crtId = $_SESSION['REPO_ID'];
-                $_SESSION['PREVIOUS_REPO_ID'] = $crtId;
-                //Logger::debug("switching back to $rootDirIndex");
+                if (isset($_SESSION['REPO_ID'])) {
+                    $crtId = $_SESSION['REPO_ID'];
+                    $_SESSION['PREVIOUS_REPO_ID'] = $crtId;
+                    //Logger::debug("switching back to $rootDirIndex");
+                }
             }
             $this->configs["REPOSITORY"] = $currentRepos[$rootDirIndex];
             $_SESSION['REPO_ID'] = $rootDirIndex;
             if(isSet($this->configs["ACCESS_DRIVER"])) unset($this->configs["ACCESS_DRIVER"]);
         }
-        
+
         if(isSet($this->configs["REPOSITORY"]) && $this->configs["REPOSITORY"]->getOption("CHARSET")!=""){
             $_SESSION["APP_CHARSET"] = $this->configs["REPOSITORY"]->getOption("CHARSET");
         }else{
@@ -307,14 +309,14 @@ class ConfService
                 unset($_SESSION["APP_CHARSET"]);
             }
         }
-        
-        
+
+
         if($rootDirIndex!=-1 && AuthService::usersEnabled() && AuthService::getLoggedUser()!=null){
             $loggedUser = AuthService::getLoggedUser();
             $loggedUser->setArrayPref("history", "last_repository", $rootDirIndex);
             $loggedUser->save("user");
-        }   
-                
+        }
+
     }
 
     /**
@@ -416,7 +418,7 @@ class ConfService
             }
             if($userObject != null && $repositoryObject->hasOwner() && !$userObject->hasParent()){
                 // Display the repositories if allow_crossusers is ok
-                if(ConfService::getCoreConf("ALLOW_CROSSUSERS_SHARING", "conf") === false 
+                if(ConfService::getCoreConf("ALLOW_CROSSUSERS_SHARING", "conf") === false
                 || ConfService::getCoreConf("ALLOW_CROSSUSERS_SHARING", "conf") === 0) {
                     return false;
                 }
@@ -440,7 +442,7 @@ class ConfService
     {
         return $this->getLoadedRepositories();
     }
-    
+
     /**
      * See instance method
      * @static
@@ -536,7 +538,7 @@ class ConfService
         }
         return $streams;
     }
-    
+
     /**
      * Create a repository object from a config options array
      *
@@ -581,7 +583,7 @@ class ConfService
         }
         return $repo;
     }
-    
+
     /**
      * Add dynamically created repository
      *
@@ -597,7 +599,7 @@ class ConfService
      */
     public function addRepositoryInst($oRepository){
         $confStorage = self::getConfStorageImpl();
-        $res = $confStorage->saveRepository($oRepository);      
+        $res = $confStorage->saveRepository($oRepository);
         if($res == -1){
             return $res;
         }
@@ -634,7 +636,7 @@ class ConfService
         }
         return $this->getConfStorageImpl()->getRepositoryById($repoId);
     }
-    
+
     /**
      * Retrieve a repository object by its slug
      *
@@ -661,8 +663,8 @@ class ConfService
         }
         return null;
     }
-    
-    
+
+
     /**
      * Replace a repository by an update one.
      *
@@ -685,7 +687,7 @@ class ConfService
         if($res == -1){
             return $res;
         }
-        Logger::logAction("Edit Repository", array("repo_name"=>$oRepositoryObject->getDisplay()));        
+        Logger::logAction("Edit Repository", array("repo_name"=>$oRepositoryObject->getDisplay()));
         $this->invalidateLoadedRepositories();
     }
     /**
@@ -719,7 +721,7 @@ class ConfService
         $res = $confStorage->deleteRepository($repoId);
         if($res == -1){
             return $res;
-        }               
+        }
         Logger::logAction("Delete Repository", array("repo_id"=>$repoId));
         $this->invalidateLoadedRepositories();
     }
@@ -816,7 +818,7 @@ class ConfService
             if(!is_dir($messageCacheDir)) mkdir($messageCacheDir);
             @file_put_contents($messageFile, "<?php \$MESSAGES = ".var_export($this->configs["MESSAGES"], true) ." ; \$CONF_MESSAGES = ".var_export($this->configs["CONF_MESSAGES"], true) ." ; ");
         }
-        
+
         return $this->configs["MESSAGES"];
     }
 
@@ -928,7 +930,7 @@ class ConfService
      * @param $varName
      * @return mixed
      */
-    public function getConfInst($varName)   
+    public function getConfInst($varName)
     {
         if(isSet($this->configs[$varName])){
             return $this->configs[$varName];
@@ -944,7 +946,7 @@ class ConfService
      * @param $varValue
      * @return void
      */
-    public function setConfInst($varName, $varValue)    
+    public function setConfInst($varName, $varValue)
     {
         $this->configs[$varName] = $varValue;
     }
@@ -962,7 +964,7 @@ class ConfService
         $confs = AuthService::filterPluginParameters("core.".$coreType, $confs);
         return (isSet($confs[$varName]) ? VarsFilter::filter($confs[$varName]) : null);
     }
-    
+
     /**
      * Set the language in the session
      * @static
@@ -990,7 +992,7 @@ class ConfService
      * @return string
      */
     public static function getLanguage()
-    {       
+    {
         $lang = self::getInstance()->getConfInst("LANGUE");
         if($lang == null){
             $lang = self::getInstance()->getCoreConf("DEFAULT_LANGUAGE");
@@ -998,7 +1000,7 @@ class ConfService
         if(empty($lang)) return "en";
         return $lang;
     }
-        
+
     /**
      * The current repository
      * @return Repository
@@ -1017,7 +1019,7 @@ class ConfService
         }
         return isset($this->configs["REPOSITORY"]) ? $this->configs["REPOSITORY"] : NULL;
     }
-    
+
     /**
      * Returns the repository access driver
      * @return Plugin
@@ -1032,7 +1034,7 @@ class ConfService
      */
     public function loadRepositoryDriverInst()
     {
-        if(isSet($this->configs["ACCESS_DRIVER"]) && is_a($this->configs["ACCESS_DRIVER"], "AbstractAccessDriver")){            
+        if(isSet($this->configs["ACCESS_DRIVER"]) && is_a($this->configs["ACCESS_DRIVER"], "AbstractAccessDriver")){
             return $this->configs["ACCESS_DRIVER"];
         }
         $this->switchRootDirInst();
@@ -1083,15 +1085,15 @@ class ConfService
             }
             throw $e;
         }
-        $pServ->setPluginUniqueActiveForType("access", $accessType);            
-        
+        $pServ->setPluginUniqueActiveForType("access", $accessType);
+
         // TRIGGER INIT META
         $metaSources = $crtRepository->getOption("META_SOURCES");
         if(isSet($metaSources) && is_array($metaSources) && count($metaSources)){
-            $keys = array_keys($metaSources);           
+            $keys = array_keys($metaSources);
             foreach ($keys as $plugId){
                 if($plugId == "") continue;
-                $split = explode(".", $plugId);             
+                $split = explode(".", $plugId);
                 $instance = $pServ->getPluginById($plugId);
                 if(!is_object($instance)) {
                     continue;
@@ -1231,7 +1233,7 @@ class ConfService
                 $xmlBuffer .= $node->ownerDocument->saveXML($node);
                 continue;
             }
-            $q = new \DOMXPath($node->ownerDocument);            
+            $q = new \DOMXPath($node->ownerDocument);
             $cNodes = $q->query("//".$filterByTagName, $node);
             $nodeAttr = $node->attributes;
             $xmlBuffer .= "<coredriver ";
@@ -1261,6 +1263,6 @@ class ConfService
     private function __construct(){}
     public function __clone(){
         trigger_error("Cannot clone me, i'm a singleton!", E_USER_ERROR);
-    }   
-    
+    }
+
 }

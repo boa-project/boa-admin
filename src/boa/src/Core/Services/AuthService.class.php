@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -81,7 +81,7 @@ class AuthService
         $authDriver = ConfService::getAuthDriverImpl();
         return $authDriver->getSeed(true);
     }
-    
+
     /**
      * Put a secure token in the session
      * @static
@@ -111,7 +111,7 @@ class AuthService
         }
         return false;
     }
-    
+
     /**
      * Get the currently logged user object
      * @return AbstractUser
@@ -148,7 +148,10 @@ class AuthService
      */
     static function getBruteForceLoginArray()
     {
-        $failedLog = Utils::getAppTmpDir().$logName;
+        $failedLog = Utils::getAppTmpDir() . static::$logName;
+
+        if (!file_exists($failedLog)) return array();
+
         $loginAttempt = @file_get_contents($failedLog);
         $loginArray = unserialize($loginAttempt);
         $ret = array();
@@ -170,7 +173,7 @@ class AuthService
      */
     static function setBruteForceLoginArray($loginArray)
     {
-        $failedLog = Utils::getAppTmpDir().$logName;
+        $failedLog = Utils::getAppTmpDir() . static::$logName;
         @file_put_contents($failedLog, serialize($loginArray));
     }
     /**
@@ -188,7 +191,7 @@ class AuthService
         }
         $login = null;
         if(isSet($loginArray[$serverAddress])){
-            $login = $loginArray[$serverAddress];       
+            $login = $loginArray[$serverAddress];
         }
         if (is_array($login)){
             $login["count"]++;
@@ -335,7 +338,7 @@ class AuthService
 
         if(!$authDriver->userExists($user_id)){
             if ($bruteForceLogin === FALSE){
-                return -4;    
+                return -4;
             }else{
                 return -1;
             }
@@ -343,7 +346,7 @@ class AuthService
         if(!$bypass_pwd){
             if(!AuthService::checkPassword($user_id, $pwd, $cookieLogin, $returnSeed)){
                 if ($bruteForceLogin === FALSE){
-                    return -4;    
+                    return -4;
                 }else{
                     if($cookieLogin) return -5;
                     return -1;
@@ -516,7 +519,7 @@ class AuthService
         }else if($adminCount == -1){
             // Here we may come from a previous version! Check the "admin" user and set its right as admin.
             $confStorage = ConfService::getConfStorageImpl();
-            $adminUser = $confStorage->createUserObject("admin"); 
+            $adminUser = $confStorage->createUserObject("admin");
             $adminUser->setAdmin(true);
             $adminUser->save("superuser");
             $START_PARAMETERS["ALERT"] .= "There is an admin user, but without admin right. Now any user can have the administration rights, \\n your 'admin' user was set with the admin rights. Please check that this suits your security configuration.";
@@ -550,9 +553,9 @@ class AuthService
         if($loggedUser == null) return 0;
         $repoList = ConfService::getRepositoriesList();
         foreach ($repoList as $rootDirIndex => $rootDirObject)
-        {           
+        {
             if($loggedUser->canRead($rootDirIndex."") || $loggedUser->canWrite($rootDirIndex."")) {
-                // Warning : do not grant access to admin repository to a non admin, or there will be 
+                // Warning : do not grant access to admin repository to a non admin, or there will be
                 // an "Empty Repository Object" error.
                 if($rootDirObject->getAccessType()=="boaconf" && AuthService::usersEnabled() && !$loggedUser->isAdmin()){
                     continue;
@@ -565,7 +568,7 @@ class AuthService
         }
         return 0;
     }
-    
+
     /**
      * Update a user with admin rights and return it
     * @param AbstractUser $adminUser
@@ -583,7 +586,7 @@ class AuthService
         $adminUser->save("superuser");
         return $adminUser;
     }
-    
+
     /**
      * Update a user object with the default repositories rights
      *
@@ -687,14 +690,14 @@ class AuthService
         if(ConfService::getCoreConf("ALLOW_GUEST_BROWSING", "auth") && $userId == "guest") return true;
         $userId = AuthService::filterUserSensitivity($userId);
         $authDriver = ConfService::getAuthDriverImpl();
-        if($cookieString){      
+        if($cookieString){
             $confDriver = ConfService::getConfStorageImpl();
-            $userObject = $confDriver->createUserObject($userId);   
+            $userObject = $confDriver->createUserObject($userId);
             $res = $userObject->checkCookieString($userPass);
             return $res;
-        }       
+        }
         $seed = $authDriver->getSeed(false);
-        if($seed != $returnSeed) return false;                  
+        if($seed != $returnSeed) return false;
         return $authDriver->checkPassword($userId, $userPass, $returnSeed);
     }
     /**
@@ -757,7 +760,7 @@ class AuthService
         $user = null;
         if($isAdmin){
             $user = $confDriver->createUserObject($userId);
-            $user->setAdmin(true);          
+            $user->setAdmin(true);
             $user->save("superuser");
         }
         if($authDriver->getOption("TRANSMIT_CLEAR_PASS") === true){
@@ -783,7 +786,7 @@ class AuthService
      */
     static function countAdminUsers(){
         $confDriver = ConfService::getConfStorageImpl();
-        $auth = ConfService::getAuthDriverImpl();   
+        $auth = ConfService::getAuthDriverImpl();
         $count = $confDriver->countAdminUsers();
         if(!$count && $auth->userExists("admin") && $confDriver->getName() == "serial"){
             return -1;

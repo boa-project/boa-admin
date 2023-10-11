@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -60,7 +60,7 @@ class DcoAccessWrapper implements FileWrapper {
     protected $dH;
 
     /**
-     * If dH is not used but an array containing the listing 
+     * If dH is not used but an array containing the listing
      * instead. dH == -1 in that case.
      *
      * @var array()
@@ -74,7 +74,7 @@ class DcoAccessWrapper implements FileWrapper {
     protected static $lastRealSize;
 
     /**
-     * Initialize the stream from the given path. 
+     * Initialize the stream from the given path.
      *
      * @param string $path
      * @return mixed Real path or -1 if currentListing contains the listing : original path converted to real path
@@ -83,9 +83,14 @@ class DcoAccessWrapper implements FileWrapper {
         $path = self::unPatchPathForBaseDir($path);
         $url = parse_url($path);
         $repoId = $url["host"];
+
+        if (!isset($url["path"])) {
+            $url["path"] = '';
+        }
+
         $test = trim($url["path"], "/");
         $atRoot = empty($test);
-        if(isSet($url["fragment"]) && strlen($url["fragment"]) > 0){
+        if(isset($url["fragment"]) && strlen($url["fragment"]) > 0){
             $url["path"] .= "#".$url["fragment"];
         }
         $repoObject = ConfService::getRepositoryById($repoId);
@@ -104,7 +109,7 @@ class DcoAccessWrapper implements FileWrapper {
             require_once(APP_VENDOR_FOLDER."/pclzip/pclzip.lib.php");
             //print($streamType.$path);
             if($streamType == "file"){
-                if(self::$crtZip == null ||  !is_array(self::$currentListingKeys)){
+                if(self::$crtZip == null || !is_array(self::$currentListingKeys)){
                     $tmpDir = Utils::getAppTmpDir() . DIRECTORY_SEPARATOR . md5(time()-rand());
                     mkdir($tmpDir);
                     $tmpFileName = $tmpDir.DIRECTORY_SEPARATOR.basename($localPath);
@@ -195,7 +200,7 @@ class DcoAccessWrapper implements FileWrapper {
                     return -1;
                 }
             }
-            return realpath($repoObject->getOption("PATH")).$repoObject->resolveVirtualRoots($url["path"]);
+            return realpath($repoObject->getOption("PATH")) . $repoObject->resolveVirtualRoots($url["path"]);
         }
     }
 
@@ -255,6 +260,12 @@ class DcoAccessWrapper implements FileWrapper {
         fclose($fp);
     }
 
+    /**
+     * Change the mode of the given path
+     *
+     * @param String $path
+     * @param int $chmodValue
+     */
     public static function changeMode($path, $chmodValue){
         $realPath = self::initPath($path, "file");
         @chmod($realPath, $chmodValue);
@@ -263,9 +274,9 @@ class DcoAccessWrapper implements FileWrapper {
     /**
      * Opens the strem
      *
-     * @param String $path Maybe in the form "app.fs://repositoryId/pathToFile" 
+     * @param String $path Maybe in the form "app.fs://repositoryId/pathToFile"
      * @param String $mode
-     * @param unknown_type $options
+     * @param bool $options
      * @param unknown_type $context
      * @return unknown
      */
@@ -327,11 +338,20 @@ class DcoAccessWrapper implements FileWrapper {
                 }
             }
         }
-        if($fp = @fopen($path, "r")){
-            $stat = fstat($fp);
-            fclose($fp);
-            return $stat;
+
+        // Chack if is a valid protocol to fopen.
+        if (preg_match('/^([a-z]+):\/\//', $path, $matches)) {
+            $protocol = $matches[1];
+            if (in_array($protocol, stream_get_wrappers())) {
+                $fp = @fopen($path, "r");
+                if ($fp) {
+                    $stat = fstat($fp);
+                    fclose($fp);
+                    return $stat;
+                }
+            }
         }
+
         // Folder case
         $real = $this->initPath($path, "dir", false, true);
         if($real!=-1 && is_dir($real)){

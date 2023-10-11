@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -562,4 +562,3 @@ $mess=array(
 "481" => "Continuar"
 /* END SENTENCE */
 );
-?>

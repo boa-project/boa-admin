@@ -48,7 +48,7 @@ use BoA\Plugins\Core\Access\AbstractAccessDriver;
 use BoA\Plugins\Access\Dco\DcoExplorer;
 use BoA\Plugins\Core\Log\Logger;
 
-defined('APP_EXEC') or die( 'Access not allowed');
+defined('APP_EXEC') || die( 'Access not allowed');
 
 if (!defined("DCOFOLDER_SUFFIX")) {
     define("DCOFOLDER_SUFFIX", "@boaproject.net");
@@ -199,7 +199,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         if(!isSet($this->actions[$action])) return;
         parent::accessPreprocess($action, $httpVars, $fileVars);
         $selection = new UserSelection();
-        $dir = $httpVars["dir"] OR "";
+        $dir = $httpVars["dir"] ?? "";
         if($this->wrapperClassName == self::DEFAULT_ACCESSWRAPPER_CLASSNAME){
             $dir = DcoAccessWrapper::patchPathForBaseDir($dir);
         }
@@ -1000,7 +1000,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             }
         }
 
-        if (!$metaData["readonly"]){
+        if (!isset($metaData["readonly"]) || !$metaData["readonly"]){
             $fPerms = @fileperms($node->getUrl());
             if($fPerms !== false){
                 $fPerms = substr(decoct( $fPerms ), ($isLeaf?2:1));
@@ -1094,8 +1094,10 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             if(!is_array($this->driverConf["HIDE_EXTENSIONS"])) {
                 $this->driverConf["HIDE_EXTENSIONS"] = explode(",",$this->driverConf["HIDE_EXTENSIONS"]);
             }
-            foreach ($this->driverConf["HIDE_EXTENSIONS"] as $search){
-                if(strcasecmp($search, $pathParts["extension"]) == 0) return true;
+            if(isset($pathParts["extension"])) {
+                foreach ($this->driverConf["HIDE_EXTENSIONS"] as $search){
+                    if(strcasecmp($search, $pathParts["extension"]) == 0) return true;
+                }
             }
         }
         return false;
@@ -1317,7 +1319,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
 
     function date_modif($file)
     {
-        $tmp = @filemtime($file) or 0;
+        $tmp = @filemtime($file) ?? 0;
         return $tmp;// date("d,m L Y H:i:s",$tmp);
     }
 
@@ -1828,7 +1830,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
      * @param Boolean $recursive
      * @param String $nodeType "both", "file", "dir"
      */
-    function chmod($path, $chmodValue, $recursive=false, $nodeType="both", &$changedFiles)
+    function chmod($path, $chmodValue, $recursive=false, $nodeType="both", &$changedFiles=[])
     {
         $realValue = octdec(ltrim($chmodValue, "0"));
         if(is_file($this->urlBase.$path)){

@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -43,10 +43,10 @@ defined('APP_EXEC') or die( 'Access not allowed');
  * @subpackage Auth
  */
 class SerialAuthDriver extends AbstractAuthDriver {
-	
+
 	var $usersSerFile;
 	var $driverName = "serial";
-	
+
 	function init($options){
 		parent::init($options);
 		$this->usersSerFile = VarsFilter::filter($this->getOption("USERS_FILEPATH"));
@@ -74,7 +74,7 @@ class SerialAuthDriver extends AbstractAuthDriver {
         ConfService::getConfStorageImpl()->filterUsersByGroup($users, "/", true);
         return $users;
     }
-	
+
 	function listUsers($baseGroup = "/"){
         $users = Utils::loadSerialFile($this->usersSerFile);
         if(AuthService::ignoreUserCase()){
@@ -87,7 +87,7 @@ class SerialAuthDriver extends AbstractAuthDriver {
     function supportsUsersPagination(){
         return true;
     }
-    function listUsersPaginated($baseGroup = "/", $regexp, $offset = -1 , $limit = -1){
+    function listUsersPaginated($baseGroup = "/", $regexp = '', $offset = -1 , $limit = -1){
         $users = $this->listUsers($baseGroup);
         $result = array();
         $index = 0;
@@ -109,14 +109,14 @@ class SerialAuthDriver extends AbstractAuthDriver {
         return count($this->listUsersPaginated($baseGroup, $regexp));
     }
 
-	
+
 	function userExists($login){
         if(AuthService::ignoreUserCase()) $login = strtolower($login);
 		$users = $this->_listAllUsers();
 		if(!is_array($users) || !array_key_exists($login, $users)) return false;
 		return true;
-	}	
-	
+	}
+
 	function checkPassword($login, $pass, $seed){
         if(AuthService::ignoreUserCase()) $login = strtolower($login);
 		$userStoredPass = $this->getUserPass($login);
@@ -127,14 +127,14 @@ class SerialAuthDriver extends AbstractAuthDriver {
 			return (md5($userStoredPass.$seed) == $pass);
 		}
 	}
-	
+
 	function usersEditable(){
 		return true;
 	}
 	function passwordsEditable(){
 		return true;
 	}
-	
+
 	function createUser($login, $passwd){
         if(AuthService::ignoreUserCase()) $login = strtolower($login);
 		$users = $this->_listAllUsers();
@@ -145,8 +145,8 @@ class SerialAuthDriver extends AbstractAuthDriver {
 		}else{
 			$users[$login] = $passwd;
 		}
-		Utils::saveSerialFile($this->usersSerFile, $users);		
-	}	
+		Utils::saveSerialFile($this->usersSerFile, $users);
+	}
 	function changePassword($login, $newPass){
         if(AuthService::ignoreUserCase()) $login = strtolower($login);
 		$users = $this->_listAllUsers();
@@ -157,7 +157,7 @@ class SerialAuthDriver extends AbstractAuthDriver {
 			$users[$login] = $newPass;
 		}
 		Utils::saveSerialFile($this->usersSerFile, $users);
-	}	
+	}
 	function deleteUser($login){
         if(AuthService::ignoreUserCase()) $login = strtolower($login);
 		$users = $this->_listAllUsers();
@@ -165,7 +165,7 @@ class SerialAuthDriver extends AbstractAuthDriver {
 		{
 			unset($users[$login]);
 			Utils::saveSerialFile($this->usersSerFile, $users);
-		}		
+		}
 	}
 
 	function getUserPass($login){

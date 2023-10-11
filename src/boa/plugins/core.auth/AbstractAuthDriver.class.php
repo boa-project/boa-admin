@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -46,15 +46,15 @@ defined('APP_EXEC') or die( 'Access not allowed');
  * Abstract representation of an authentication driver. Must be implemented by the auth plugin
  */
 class AbstractAuthDriver extends Plugin {
-	
+
 	var $options;
 	var $driverName = "abstract";
 	var $driverType = "auth";
-					
+
 	public function switchAction($action, $httpVars, $fileVars)	{
 		if(!isSet($this->actions[$action])) return;
 		$mess = ConfService::getMessages();
-		
+
 		switch ($action){
 
             case "login" :
@@ -114,9 +114,9 @@ class AbstractAuthDriver extends Plugin {
 
 			//------------------------------------
 			//	CHANGE USER PASSWORD
-			//------------------------------------	
+			//------------------------------------
 			case "pass_change":
-							
+
 				$userObject = AuthService::getLoggedUser();
 				if($userObject == null || $userObject->getId() == "guest"){
 					header("Content-Type:text/plain");
@@ -144,8 +144,8 @@ class AbstractAuthDriver extends Plugin {
 				}
 				header("Content-Type:text/plain");
 				print "SUCCESS";
-				
-			break;					
+
+			break;
 
             case "logout" :
 
@@ -192,15 +192,15 @@ class AbstractAuthDriver extends Plugin {
 
 			default;
 			break;
-		}				
+		}
 		return "";
 	}
-	
-	
+
+
 	public function getRegistryContributions( $extendedVersion = true ){
         $this->loadRegistryContributions();
         if(!$extendedVersion) return $this->registryContributions;
-        
+
 		$logged = AuthService::getLoggedUser();
         if(AuthService::usersEnabled()) {
             if($logged == null){
@@ -213,10 +213,10 @@ class AbstractAuthDriver extends Plugin {
         }
 		$dom = new \DOMDocument();
 		$dom->loadXML($xmlString);
-		$this->registryContributions[]=$dom->documentElement;				
+		$this->registryContributions[]=$dom->documentElement;
 		return $this->registryContributions;
 	}
-	
+
 	protected function parseSpecificContributions(&$contribNode){
 		parent::parseSpecificContributions($contribNode);
 		if($contribNode->nodeName != "actions") return ;
@@ -238,15 +238,17 @@ class AbstractAuthDriver extends Plugin {
 		$passChangeNode = $passChangeNodeList->item(0);
 		$contribNode->removeChild($passChangeNode);
 	}
-	
-	function preLogUser($sessionId){}	
+
+	function preLogUser($sessionId){}
 
     function supportsUsersPagination(){
         return false;
     }
-    function listUsersPaginated($baseGroup = "/", $regexp, $offset, $limit){
+
+    function listUsersPaginated($baseGroup = "/", $regexp = "", $page = 1, $pageSize = 10){
         return $this->listUsers($baseGroup);
     }
+
     function getUsersCount($baseGroup = "/", $regexp = ""){
         return -1;
     }
@@ -296,9 +298,9 @@ class AbstractAuthDriver extends Plugin {
      * @return bool
      */
     function passwordsEditable(){}
-	
-	function createUser($login, $passwd){}	
-	function changePassword($login, $newPass){}	
+
+	function createUser($login, $passwd){}
+	function changePassword($login, $newPass){}
 	function deleteUser($login){}
 
     function supportsAuthSchemes(){
@@ -323,15 +325,15 @@ class AbstractAuthDriver extends Plugin {
 	function getLogoutRedirect(){
         return false;
     }
-	
-	function getOption($optionName){	
-		return (isSet($this->options[$optionName])?$this->options[$optionName]:"");	
+
+	function getOption($optionName){
+		return (isSet($this->options[$optionName])?$this->options[$optionName]:"");
 	}
-	
+
 	function isAppAdmin($login){
 		return ($this->getOption("APP_ADMIN_LOGIN") === $login);
 	}
-	
+
 	function autoCreateUser(){
 		$opt = $this->getOption("AUTOCREATE_USER");
 		if($opt === true) return true;
@@ -342,13 +344,13 @@ class AbstractAuthDriver extends Plugin {
 		if($this->getOption("TRANSMIT_CLEAR_PASS") === true) return -1;
 		if($new){
 			$seed = md5(time());
-			$_SESSION["APP_CURRENT_SEED"] = $seed;	
-			return $seed;		
+			$_SESSION["APP_CURRENT_SEED"] = $seed;
+			return $seed;
 		}else{
 			return (isSet($_SESSION["APP_CURRENT_SEED"])?$_SESSION["APP_CURRENT_SEED"]:0);
 		}
-	}	
-	
+	}
+
 	function filterCredentials($userId, $pwd){
 		return array($userId, $pwd);
 	}

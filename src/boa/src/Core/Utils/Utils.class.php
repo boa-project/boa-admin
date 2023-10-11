@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -1164,7 +1164,7 @@ class Utils
             if (preg_match("/^\{/", $content)) {
                 $repos = json_decode($content);
             }
-            else {                
+            else {
                 $repos = unserialize($content);
             }
             $repoList = array_merge($repoList, $repos);
@@ -1522,7 +1522,9 @@ class Utils
                 }
                 if(isSet($repDef[$key."_replication"])){
                     $repKey = $repDef[$key."_replication"];
-                    if(!is_array($replicationGroups[$repKey])) $replicationGroups[$repKey] = array();
+                    if(!isset($replicationGroups[$repKey]) || !is_array($replicationGroups[$repKey])) {
+                        $replicationGroups[$repKey] = [];
+                    }
                     $replicationGroups[$repKey][] = $key;
                 }
                 $options[substr($key, strlen($prefix))] = $value;

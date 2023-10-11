@@ -98,7 +98,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         $meta = json_decode($content);
         $metadata = array("lommetadata" => json_encode($meta->metadata));
         if ($meta->manifest && ($meta->manifest->type || $meta->manifest->is_a)){
-            $metadata["lomtype"] = $meta->manifest->is_a;
+            $metadata["lomtype"] = property_exists($meta->manifest, 'is_a') ? $meta->manifest->is_a : $meta->manifest->type;
         }
 
         if (!$isRoot){
@@ -515,13 +515,12 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         $selection = new UserSelection();
         $selection->initFromHttpVars();
         $currentFile = $selection->getUniqueFile();
-        $urlBase = $this->accessDriver->getResourceUrl($currentFile);
 
-        $isRoot = is_dir($this->accessDriver->urlBase.$currentFile);
-        $manifestPath = $isRoot?$currentFile."/.manifest":
+        $isRoot = is_dir($this->accessDriver->urlBase . $currentFile);
+        $manifestPath = $isRoot ? $currentFile . "/.manifest" :
             dirname($currentFile)."/.".basename($currentFile).".manifest";
 
-        $manifestPath = $this->accessDriver->urlBase.$manifestPath;
+        $manifestPath = $this->accessDriver->urlBase . $manifestPath;
         $json = json_decode(file_get_contents($manifestPath));
         $json->manifest->status = self::PUBLISHED_STATUS;
         $json->manifest->lastpublished = date('c');
@@ -535,8 +534,9 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             @fwrite($fp, $data, strlen($data));
             @fclose($fp);
         }
-        //Create a published version of the meta
-        copy($manifestPath, $manifestPath.".published");
+
+        // Create a published version of the meta.
+        copy($manifestPath, $manifestPath . ".published");
 
         header('Content-Type: application/json; charset=UTF-8');
         header('Cache-Control: no-cache');

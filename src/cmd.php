@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -110,9 +110,9 @@ if(strpos($optUser,",") !== false){
 }
 
 
-$optStatusFile = $options["s"] OR false;
+$optStatusFile = $options["s"] ?? false;
 $optAction = $options["a"];
-$optRepoId = $options["r"] OR false;
+$optRepoId = $options["r"] ?? false;
 if(strpos($optRepoId,",") !== false){
     $nextRepositories = explode(",", $optRepoId);
     $optRepoId = array_shift($nextRepositories);
@@ -121,7 +121,7 @@ if(strpos($optRepoId,",") !== false){
 
 //echo("REPOSITORY : ".$optRepoId." USER : ".$optUser."\n");
 
-$optDetectUser = $options["detect_user"] OR false;
+$optDetectUser = $options["detect_user"] ?? false;
 $detectedUser = false;
 
 if($optRepoId !== false){

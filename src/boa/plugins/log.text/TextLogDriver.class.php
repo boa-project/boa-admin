@@ -191,11 +191,12 @@ class TextLogDriver extends AbstractLogDriver {
      * @access public
      */
     function close() {
-        $success = @fclose($this->fileHandle);
-        if ($success === false) {
-            // Failure to close the log file
+        if ($this->fileHandle) {
+            $success = @fclose($this->fileHandle);
+            if ($success === false) {
+                // Failure to close the log file
+            }
         }
-
     }
 
     /**

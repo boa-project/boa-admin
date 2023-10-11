@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -60,7 +60,7 @@ class FsAccessWrapper implements FileWrapper {
     protected $dH;
 
     /**
-     * If dH is not used but an array containing the listing 
+     * If dH is not used but an array containing the listing
      * instead. dH == -1 in that case.
      *
      * @var array()
@@ -74,7 +74,7 @@ class FsAccessWrapper implements FileWrapper {
     protected static $lastRealSize;
 
     /**
-     * Initialize the stream from the given path. 
+     * Initialize the stream from the given path.
      *
      * @param string $path
      * @return mixed Real path or -1 if currentListing contains the listing : original path converted to real path
@@ -263,7 +263,7 @@ class FsAccessWrapper implements FileWrapper {
     /**
      * Opens the strem
      *
-     * @param String $path Maybe in the form "app.fs://repositoryId/pathToFile" 
+     * @param String $path Maybe in the form "app.fs://repositoryId/pathToFile"
      * @param String $mode
      * @param unknown_type $options
      * @param unknown_type $context

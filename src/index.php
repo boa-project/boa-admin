@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -27,6 +27,9 @@
  * @copyright  2017 BoA Project
  * @license    https://www.gnu.org/licenses/agpl-3.0.html GNU Affero GPL v3 or later
  */
+@error_reporting(E_ALL | E_STRICT);
+@ini_set('display_errors', '1');
+
 include_once("base.conf.php");
 include_once("boa/src/Core/Utils/polyfills.php"); //ToDo: Is this the rigth way to do this?
 

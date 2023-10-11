@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -98,7 +98,7 @@ class Repository implements GroupPathProvider {
      * @var bool
      */
     public $isTemplate = false;
-	
+
     /**
      * @var string
      */
@@ -142,7 +142,7 @@ class Repository implements GroupPathProvider {
 		$this->setAccessType($driver);
 		$this->setDisplay($display);
 		$this->setId($id);
-		$this->uuid = md5(microtime());
+		$this->uuid = md5(microtime(true));
 		$this->slug = Utils::slugify($display);
         $this->inferOptionsFromParent = false;
         $this->options["CREATION_TIME"] = time();
@@ -265,7 +265,7 @@ class Repository implements GroupPathProvider {
 		if($streamData !== false) $this->streamData = $streamData;
 		return ($streamData !== false);
 	}
-	
+
     /**
      * Add options
      * @param $oName
@@ -298,7 +298,7 @@ class Repository implements GroupPathProvider {
             }
         }
         if(isSet($this->options[$oName])){
-			$value = $this->options[$oName];			
+			$value = $this->options[$oName];
 			if(!$safe) $value = VarsFilter::filter($value);
 			return $value;
 		}
@@ -365,8 +365,8 @@ class Repository implements GroupPathProvider {
 		$opt = $this->getOption("DEFAULT_RIGHTS");
 		return (isSet($opt)?$opt:"");
 	}
-	
-	
+
+
 	/**
      * The the access driver type
 	 * @return String
@@ -374,7 +374,7 @@ class Repository implements GroupPathProvider {
 	function getAccessType() {
 		return $this->accessType;
 	}
-	
+
 	/**
      * The label of this repository
 	 * @return String
@@ -388,7 +388,7 @@ class Repository implements GroupPathProvider {
 		}
 		return $this->display;
 	}
-	
+
 	/**
 	 * @return string
 	 */
@@ -396,14 +396,14 @@ class Repository implements GroupPathProvider {
         if($this->isWriteable()) return $this->getUniqueId();
 		return $this->id;
 	}
-	
+
 	/**
 	 * @return boolean
 	 */
 	function getCreate() {
 		return $this->getOption("CREATE");
 	}
-	
+
 	/**
 	 * @param boolean $create
 	 */
@@ -411,70 +411,70 @@ class Repository implements GroupPathProvider {
 		$this->options["CREATE"] = $create;
 	}
 
-	
+
 	/**
 	 * @param String $accessType
 	 */
 	function setAccessType($accessType) {
 		$this->accessType = $accessType;
 	}
-	
+
 	/**
 	 * @param String $display
 	 */
 	function setDisplay($display) {
 		$this->display = $display;
 	}
-	
+
 	/**
 	 * @param int $id
 	 */
 	function setId($id) {
 		$this->id = $id;
 	}
-	
+
 	function isWriteable(){
 		return $this->writeable;
 	}
-	
+
 	function setWriteable($w){
 		$this->writeable = $w;
 	}
-	
+
 	function isEnabled(){
 		return $this->enabled;
 	}
-	
+
 	function setEnabled($e){
 		$this->enabled = $e;
 	}
-	
+
 	function setDisplayStringId($id){
 		$this->displayStringId = $id;
 	}
-	
+
 	function setOwnerData($repoParentId, $ownerUserId = null, $childUserId = null){
 		$this->owner = $ownerUserId;
 		$this->uniqueUser = $childUserId;
 		$this->parentId = $repoParentId;
 	}
-	
+
 	function getOwner(){
 		return $this->owner;
 	}
-	
+
 	function getParentId(){
 		return $this->parentId;
 	}
-	
+
 	function getUniqueUser(){
 		return $this->uniqueUser;
 	}
-	
+
 	function hasOwner(){
 		return isSet($this->owner);
 	}
-		
+
 	function hasParent(){
 		return isSet($this->parentId);
 	}
@@ -554,7 +554,7 @@ class Repository implements GroupPathProvider {
         if(strpos($path, "APP_GROUP_PATH_FLAT") !== false) return "GROUP";
         return false;
     }
-    
+
     public static function fromJsonObject($jsonObject) {
         $result = array();
         foreach ($jsonObject AS $key => $value) {

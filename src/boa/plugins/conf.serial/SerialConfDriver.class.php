@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -123,7 +123,7 @@ class SerialConfDriver extends AbstractConfDriver {
      * @return Array
      */
     function listRepositories($user = null){
-		$all = Utils::loadSerialFile($this->repoSerialFile, false, "json");        
+		$all = Utils::loadSerialFile($this->repoSerialFile, false, "json");
         $all = Repository::fromJsonObject($all);
         if($user != null && $all != null){
             foreach($all as $repoId => $repoObject){
@@ -519,7 +519,7 @@ class SerialConfDriver extends AbstractConfDriver {
     function saveBinary($context, $fileName, $ID = null)
     {
         if(empty($ID)){
-            $ID = substr(md5(microtime()*rand(0,100)), 0, 12);
+            $ID = substr(md5(microtime(true)*rand(0,100)), 0, 12);
             $ID .= ".".pathinfo($fileName, PATHINFO_EXTENSION);
         }
         copy($fileName, $this->getBinaryPathStorage($context)."/".$ID);

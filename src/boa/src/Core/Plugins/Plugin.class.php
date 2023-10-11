@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -78,14 +78,14 @@ class Plugin implements \Serializable{
     private $manifestXML;
 
     private $serializableAttributes = array(
-        "baseDir", 
-        "id", 
-        "name", 
-        "type", 
+        "baseDir",
+        "id",
+        "name",
+        "type",
         "manifestLoaded",
         "externalFilesAppended",
         "enabled",
-        "actions", 
+        "actions",
         "registryContributions",
         "contributionsLoaded",
         "mixins",
@@ -97,7 +97,7 @@ class Plugin implements \Serializable{
      *
      * @param string $id
      * @param string $baseDir
-     */ 
+     */
     public function __construct($id, $baseDir){
         $this->baseDir = $baseDir;
         $this->id = $id;
@@ -184,9 +184,9 @@ class Plugin implements \Serializable{
             if($regNode->nodeType != XML_ELEMENT_NODE) continue;
             if($regNode->nodeName == "external_file" && !$this->externalFilesAppended){
                 $data = $this->nodeAttrToHash($regNode);
-                $filename = $data["filename"] OR "";
-                $include = $data["include"] OR "*";
-                $exclude = $data["exclude"] OR "";
+                $filename = $data["filename"] ?? "";
+                $include = $data["include"] ?? "*";
+                $exclude = $data["exclude"] ?? "";
                 if(!is_file(APP_PLUGINS_FOLDER."/".$filename)) continue;
                 if($include != "*") {
                     $include = explode(",", $include);

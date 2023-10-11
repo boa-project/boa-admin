@@ -206,7 +206,7 @@ class XMLWriter
      * @param $context
      * @return
      */
-	static function catchError($code, $message, $fichier, $ligne, $context){
+	static function catchError($code, $message, $fichier, $ligne, $context = null){
 		if(error_reporting() == 0) return ;
 		if(ConfService::getConf("SERVER_DEBUG")){
 			$message = "$message in $fichier (l.$ligne)";
@@ -271,7 +271,9 @@ class XMLWriter
 		if(preg_match_all("/APP_MESSAGE(\[.*?\])/", $xml, $matches, PREG_SET_ORDER)){
 			foreach($matches as $match){
 				$messId = str_replace("]", "", str_replace("[", "", $match[1]));
-				$xml = str_replace("APP_MESSAGE[$messId]", $messages[$messId], $xml);
+                if (isset($messages[$messId])) {
+                    $xml = str_replace("APP_MESSAGE[$messId]", $messages[$messId], $xml);
+                }
 			}
 		}
 		if(preg_match_all("/CONF_MESSAGE(\[.*?\])/", $xml, $matches, PREG_SET_ORDER)){
