@@ -96,25 +96,34 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         if (!file_exists($metaPath)) return;
         $content = file_get_contents($metaPath);
         $meta = json_decode($content);
-        $metadata = array("lommetadata" => json_encode($meta->metadata));
-        if ($meta->manifest && ($meta->manifest->type || $meta->manifest->is_a)){
-            $metadata["lomtype"] = $meta->manifest->is_a;
+        if (!is_object($meta)) {
+            return;
+        }
+        $manifest = $meta->manifest ?? null;
+        $metadata = array("lommetadata" => json_encode($meta->metadata ?? new \stdClass()));
+        // New DCOs often have manifest.type but not is_a until first meta save.
+        if (is_object($manifest)) {
+            $lomtype = $manifest->is_a ?? ($manifest->type ?? null);
+            if (!empty($lomtype)) {
+                $metadata["lomtype"] = $lomtype;
+            }
         }
 
-        if (!$isRoot){
-            $metadata["status_id"] = $meta->manifest->status;
-            $metadata["status"] = $this->mess["access_dco.".$meta->manifest->status];
-            $metadata["lastupdated"] = $meta->manifest->lastupdated;
-            if (!empty($meta->manifest->lastpublished)){
-                $metadata["lastpublished"] = $meta->manifest->lastpublished;
+        if (!$isRoot && is_object($manifest)){
+            $statusId = $manifest->status ?? "";
+            $metadata["status_id"] = $statusId;
+            $metadata["status"] = $this->mess["access_dco.".$statusId] ?? $statusId;
+            $metadata["lastupdated"] = $manifest->lastupdated ?? null;
+            if (!empty($manifest->lastpublished)){
+                $metadata["lastpublished"] = $manifest->lastpublished;
             }
             else {
                 $metadata["lastpublished"] = 0;
             }
         }
-        $status = $meta->manifest->status;
+        $status = is_object($manifest) ? ($manifest->status ?? null) : null;
         if ($status == self::PUBLISHED_STATUS){
-            if (empty($meta->manifest->lastpublished) || $meta->manifest->lastpublished < $meta->manifest->lastupdated){
+            if (empty($manifest->lastpublished) || $manifest->lastpublished < ($manifest->lastupdated ?? null)){
                 $overlay = (isset($overlay)?$overlay.",":"")."alert.png";
             }
             else {
@@ -431,8 +440,8 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         //$node = new ManifestNode($urlBase);
         $meta = array();
         $this->parseParameters($httpVars, $meta, null, true);
-        $spec_id = $httpVars["spec_id"];
-        $unique = $httpVars["mode"] == 'single';
+        $spec_id = $httpVars["spec_id"] ?? "";
+        $unique = ($httpVars["mode"] ?? "") == 'single';
         $data = $this->createUpdateManifest($currentFile, $meta, $spec_id, $unique);
 
         //Controller::applyHook("node.meta_change", array($node));

@@ -154,9 +154,9 @@ class HTMLWriter
      * @param $errorMessage
      * @return
      */
-    static function javascriptErrorHandler($errorType, $errorMessage){    	
-    	// Handle "@" case!
-    	if(error_reporting() == 0) return ;
+    static function javascriptErrorHandler($errorType, $errorMessage, $errorFile = null, $errorLine = null){
+    	// PHP 8+: @-suppressed warnings no longer report error_reporting() === 0.
+    	if(!(error_reporting() & $errorType)) return true;
     	restore_error_handler();    	
     	die("<script language='javascript'>parent.app.displayMessage('ERROR', '".str_replace("'", "\'", $errorMessage)."');</script>");
     }

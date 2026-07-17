@@ -587,7 +587,7 @@ abstract class AbstractConfDriver extends Plugin {
                                 $pluginId = $parentNode->nodeName.".".$parentNode->getAttribute("name");
                             }
                             $name = $xmlNode->getAttribute("name");
-                            if(isSet($data[$name]) || $data[$name] == ""){
+                            if (array_key_exists($name, $data)) {
                                 if($data[$name] == "" || $userObject->parentRole == null || $userObject->parentRole->filterParameterValue($pluginId, $name, APP_REPO_SCOPE_ALL, "") != $data[$name]){
                                     $userObject->personalRole->setParameterValue($pluginId, $name, $data[$name]);
                                     $rChanges = true;

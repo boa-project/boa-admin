@@ -5,6 +5,23 @@
          colors="true"
          cacheDirectory=".phpunit.cache">
     <testsuites>
+        <testsuite name="unit">
+            <directory>tests</directory>
+            <exclude>tests/Http</exclude>
+        </testsuite>
+        <!-- Explicit order: login → registry → conf → lom → fs fixtures → dco → prefs → smoke → logout -->
+        <testsuite name="http">
+            <file>tests/Http/Http01AuthBootTest.php</file>
+            <file>tests/Http/Http02RegistryGuiTest.php</file>
+            <file>tests/Http/Http03ConfAdminTest.php</file>
+            <file>tests/Http/Http04MetaLomTest.php</file>
+            <file>tests/Http/Http05DcoFsTest.php</file>
+            <file>tests/Http/Http06DcoObjectTest.php</file>
+            <file>tests/Http/Http07UserPrefsTest.php</file>
+            <file>tests/Http/Http08ShareMiscTest.php</file>
+            <file>tests/Http/Http08bActionSmokeTest.php</file>
+            <file>tests/Http/Http09SessionEndTest.php</file>
+        </testsuite>
         <testsuite name="boa-admin">
             <directory>tests</directory>
         </testsuite>

@@ -1003,7 +1003,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             }
         }
 
-        if (!$metaData["readonly"]){
+        if (!($metaData["readonly"] ?? false)){
             $fPerms = @fileperms($node->getUrl());
             if($fPerms !== false){
                 $fPerms = substr(decoct( $fPerms ), ($isLeaf?2:1));

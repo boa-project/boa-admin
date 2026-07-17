@@ -99,7 +99,9 @@ class ConfAccessDriver extends AbstractAccessDriver
                         $pId .= $parentPlugin->attributes->getNamedItem("name")->nodeValue;
                     }
                     //echo($pId." : ". $node->attributes->getNamedItem("name")->nodeValue . " (".$messId.")<br>");
-                    if(!is_array($actions[$pId])) $actions[$pId] = array();
+                    if (!isset($actions[$pId]) || !is_array($actions[$pId])) {
+                        $actions[$pId] = array();
+                    }
                     $actionName = $node->attributes->getNamedItem("name")->nodeValue;
                     $actions[$pId][$actionName] = array( "action" => $actionName , "label" => $messId);
 
@@ -127,7 +129,9 @@ class ConfAccessDriver extends AbstractAccessDriver
                         $pId .= $parentPlugin->attributes->getNamedItem("name")->nodeValue;
                     }
                     //echo($pId." : ". $node->attributes->getNamedItem("name")->nodeValue . " (".$messId.")<br>");
-                    if(!is_array($actions[$pId])) $actions[$pId] = array();
+                    if (!isset($actions[$pId]) || !is_array($actions[$pId])) {
+                        $actions[$pId] = array();
+                    }
                     $actionName = $node->attributes->getNamedItem("name")->nodeValue;
                     $messId = $node->attributes->getNamedItem("label")->nodeValue;
                     $actions[$pId][$actionName] = array( "parameter" => $actionName , "label" => XMLWriter::replaceXmlKeywords($messId));
@@ -1387,6 +1391,13 @@ class ConfAccessDriver extends AbstractAccessDriver
                 echo("<plugin_settings_values>");
                 foreach($values as $key => $value){
                     $attribute = true;
+                    // Saved/core-merged keys may not have a definition (or type); skip safely.
+                    if(!is_array($definitions) || !isset($definitions[$key]["type"])){
+                        if(is_scalar($value) || $value === null){
+                            echo("<param name=\"".Utils::xmlEntities($key)."\" value=\"".Utils::xmlEntities((string)$value)."\"/>");
+                        }
+                        continue;
+                    }
                     $type = $definitions[$key]["type"];
                     if($type == "array" && is_array($value)){
                         $value = implode(",", $value);

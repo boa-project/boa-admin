@@ -82,7 +82,7 @@ class DcoExplorer{
             $path .= "/";
         }
         $nonPatchedPath = $path;
-        if($driver->wrapperClassName == $driver->DEFAULT_ACCESSWRAPPER_CLASSNAME){
+        if($driver->wrapperClassName == DcoAccessDriver::DEFAULT_ACCESSWRAPPER_CLASSNAME){
             $nonPatchedPath = DcoAccessWrapper::unPatchPathForBaseDir($path);
         }
 
@@ -106,7 +106,7 @@ class DcoExplorer{
         $contype_string = $driver->mess["access_dco.dco_contype"];
         $type_string = $driver->mess["access_dco.dco_type"];
         $author_string = $driver->mess["access_dco.dco_author"];
-        $author_string = $driver->mess["access_dco.status"];
+        $status_string = $driver->mess["access_dco.dco_status"] ?? "Status";
         XMLWriter::header();        
         XMLWriter::sendFilesListComponentConfig('<columns switchDisplayMode="detail" switchGridMode="filelist"><column messageString="'.$title_string.'" attributeName="APP_label" sortType="String"/><column messageString="'.$type_string.'" attributeName="type" sortType="String"/><column messageString="'.$author_string.'" attributeName="author" sortType="String"/><column messageString="'.$status_string.'" attributeName="status" sortType="String" additionalText="date:lastpublished"/></columns>');
         //<column messageString="'.$contype_string.'" attributeName="conexion_type" sortType="String"/>
@@ -127,26 +127,28 @@ class DcoExplorer{
 
         $path = call_user_func(array($driver->wrapperClassName, "getRealFSReference"), $options["path"]);
         $nonPatchedPath = $options["nonPatchedPath"];
+        $totalPages = null;
+        $crtPage = null;
 
         if (array_key_exists("file", $options)){
             $entries = glob($path."/".$options["file"]."/{.}manifest", GLOB_NOSORT|GLOB_BRACE);
             if (count($entries)){
                 $node = $this->getDcoManifestNode($options["path"]."/".$options["file"]."/.manifest"); //$entries[0]
-                return array(0 => $node);
+                return array(array($node), $totalPages, $crtPage, 1);
             }
-            return array();
+            return array(array(), $totalPages, $crtPage, 0);
         }
 
         $entries = glob($path."/*/{.}manifest", GLOB_NOSORT|GLOB_BRACE);
-        $count = count($entries);
-        if($count > $threshold){
+        $countFiles = count($entries);
+        if($countFiles > $threshold){
             $offset = 0;
             $crtPage = 1;
             if(isSet($page)){
                 $offset = (intval($page)-1)*$limitPerPage;
                 $crtPage = $page;
             }
-            $totalPages = floor($count / $limitPerPage) + 1;
+            $totalPages = floor($countFiles / $limitPerPage) + 1;
         }else{
             $offset = $limitPerPage = 0;
         }
@@ -204,6 +206,7 @@ class DcoExplorer{
     }
 
     private function readObjectContent($options, $page){
+        $startTime = microtime(true);
         $driver = $this->_driver;
         $mess = $driver->mess;
         $dir = $options["dir"];
@@ -222,6 +225,8 @@ class DcoExplorer{
         if(!isset($limitPerPage) || intval($limitPerPage) == 0) $limitPerPage = 200;
         
         $countFiles = $this->countFiles($path, !$lsOptions["f"]);
+        $totalPages = null;
+        $crtPage = null;
         if($countFiles > $threshold){
             if(isSet($uniqueFile)){
                 $originalLimitPerPage = $limitPerPage;
@@ -283,8 +288,8 @@ class DcoExplorer{
         closedir($handle);
         $fullList = array("d" => array(), "z" => array(), "f" => array());
         $nodes = scandir($path);
-        if(!empty($this->driverConf["SCANDIR_RESULT_SORTFONC"])){
-            usort($nodes, $this->driverConf["SCANDIR_RESULT_SORTFONC"]);
+        if(!empty($this->_driver->driverConf["SCANDIR_RESULT_SORTFONC"])){
+            usort($nodes, $this->_driver->driverConf["SCANDIR_RESULT_SORTFONC"]);
         }
         //while(strlen($nodeName = readdir($handle)) > 0){
         foreach ($nodes as $nodeName){
@@ -424,7 +429,7 @@ class DcoExplorer{
         while (strlen($file = readdir($handle)) > 0)
         {
             if($file != "." && $file !=".." 
-                && !(Utils::isHidden($file) && !$this->driverConf["SHOW_HIDDEN_FILES"])){
+                && !(Utils::isHidden($file) && !($this->_driver->driverConf["SHOW_HIDDEN_FILES"] ?? false))){
                 if($foldersOnly && is_file($dirName."/".$file)) continue;
                 $count++;
                 if($nonEmptyCheckOnly) break;

@@ -69,13 +69,15 @@ class AbstractAccessDriver extends Plugin {
     function accessPreprocess($actionName, &$httpVars, &$filesVar)
     {
         if($actionName == "apply_check_hook"){
-            if(!in_array($httpVars["hook_name"], array("before_create", "before_path_change", "before_change"))){
+            $hookName = $httpVars["hook_name"] ?? "";
+            $hookArg = $httpVars["hook_arg"] ?? null;
+            if(!in_array($hookName, array("before_create", "before_path_change", "before_change"))){
                 return;
             }
             $selection = new UserSelection();
             $selection->initFromHttpVars($httpVars);
             $node = $selection->getUniqueNode($this);
-            Controller::applyHook("node.".$httpVars["hook_name"], array($node, $httpVars["hook_arg"]));
+            Controller::applyHook("node.".$hookName, array($node, $hookArg));
         }
         if($actionName == "ls"){
             // UPWARD COMPATIBILTY

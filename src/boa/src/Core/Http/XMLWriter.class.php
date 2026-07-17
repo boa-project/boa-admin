@@ -208,12 +208,11 @@ class XMLWriter
      */
 	// $context removed from set_error_handler callbacks in PHP 8.0; keep optional for BC.
 	static function catchError($code, $message, $fichier, $ligne, $context = null){
-		// @-suppressed and silenced errors: mark handled so PHP does not fall through.
-		if(error_reporting() == 0) return true;
-		if(ConfService::getConf("SERVER_DEBUG")){
-			$message = "$message in $fichier (l.$ligne)";
-            //debug_print_backtrace();
-		}
+		// PHP 8+: @ no longer makes error_reporting() === 0 inside the handler.
+		// It returns only fatal bits, so silenced warnings must be detected with & $code.
+		if(!(error_reporting() & $code)) return true;
+		// Always include location — PHP 8 promoted warnings are otherwise hard to triage.
+		$message = "$message in $fichier (l.$ligne)";
         try{
             Logger::logAction("error", array("message" => $message));
         }catch(\Exception $e){
@@ -221,7 +220,7 @@ class XMLWriter
             echo "<pre>Error in error";
             debug_print_backtrace();
             echo "</pre>";
-            die("Recursive exception. Original error was : ".$message. " in $fichier , line $ligne");
+            die("Recursive exception. Original error was : ".$message);
         }
 		if(!headers_sent()) XMLWriter::header();
 		XMLWriter::sendMessage(null, SystemTextEncoding::toUTF8($message), true);
@@ -272,8 +271,11 @@ class XMLWriter
 
 		if(preg_match_all("/APP_MESSAGE(\[.*?\])/", $xml, $matches, PREG_SET_ORDER)){
 			foreach($matches as $match){
-				$messId = str_replace("]", "", str_replace("[", "", $match[1]));
-				$xml = str_replace("APP_MESSAGE[$messId]", $messages[$messId], $xml);
+				$messId = str_replace(array("[", "]"), "", $match[1]);
+				// Missing i18n keys (e.g. APP_MESSAGE[481] absent from en.php) must not raise
+				// PHP 8 undefined-key warnings mid-XML response.
+				$message = array_key_exists($messId, $messages) ? $messages[$messId] : $messId;
+				$xml = str_replace("APP_MESSAGE[$messId]", $message, $xml);
 			}
 		}
 		if(preg_match_all("/CONF_MESSAGE(\[.*?\])/", $xml, $matches, PREG_SET_ORDER)){
