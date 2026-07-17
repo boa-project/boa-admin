@@ -206,8 +206,10 @@ class XMLWriter
      * @param $context
      * @return
      */
-	static function catchError($code, $message, $fichier, $ligne, $context){
-		if(error_reporting() == 0) return ;
+	// $context removed from set_error_handler callbacks in PHP 8.0; keep optional for BC.
+	static function catchError($code, $message, $fichier, $ligne, $context = null){
+		// @-suppressed and silenced errors: mark handled so PHP does not fall through.
+		if(error_reporting() == 0) return true;
 		if(ConfService::getConf("SERVER_DEBUG")){
 			$message = "$message in $fichier (l.$ligne)";
             //debug_print_backtrace();

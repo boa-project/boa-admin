@@ -193,7 +193,7 @@ class VideoTranscoderTask implements ITask {
         $relpath = implode("/", $parts);
 
         $alternatepath = str_replace("$$__ROOT", $root, $repo["altpath"]) . "/" . $relpath;// . $filename_parts["filename"];
-        $ext = strtolower($filename_parts["extension"]);
+        $ext = strtolower($filename_parts["extension"] ?? "");
 
         if (!file_exists($alternatepath)) {
             @mkdir($alternatepath, 0777, true);

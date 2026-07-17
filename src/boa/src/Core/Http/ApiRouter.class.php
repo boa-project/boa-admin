@@ -65,8 +65,24 @@ class ApiRouter {
      */
     public function run(){
         $uri = $_SERVER["REQUEST_URI"];
-        $scriptUri = dirname($_SERVER["SCRIPT_NAME"])."/api/";
-        $uri = substr($uri, strlen($scriptUri));
+        // dirname("/index.rest.php") is "/" — avoid producing "//api/"
+        $dir = str_replace('\\', '/', dirname($_SERVER["SCRIPT_NAME"]));
+        if ($dir === '/' || $dir === '') {
+            $scriptUri = '/api/';
+        } else {
+            $scriptUri = rtrim($dir, '/') . '/api/';
+        }
+        if (strpos($uri, $scriptUri) === 0) {
+            $uri = substr($uri, strlen($scriptUri));
+        } elseif (preg_match('#/api/(.*)$#', $uri, $m)) {
+            $uri = $m[1];
+        } else {
+            $uri = ltrim($uri, '/');
+        }
+        // Strip query string.
+        if (($q = strpos($uri, '?')) !== false) {
+            $uri = substr($uri, 0, $q);
+        }
 
         $matches = [];
         if (preg_match("/^catalogs(?:\/(\S+))*/", $uri, $matches)){
@@ -99,7 +115,7 @@ class ApiRouter {
                 "alias" => $repo->slug,
                 "type" => $repo->accessType,
                 "name" => $repo->display,
-                "path" => str_replace("APP_DATA_PATH", APP_DATA_PATH, $repo->options["PATH"])
+                "path" => str_replace("APP_DATA_PATH", APP_DATA_PATH, $repo->options["PATH"] ?? "")
                 ); 
     }
 }

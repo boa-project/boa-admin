@@ -65,13 +65,13 @@ class SimpleUploadProcessor extends Plugin {
 	            $_SERVER['CONTENT_LENGTH'],
 	            $_SERVER['HTTP_X_FILE_NAME']
 	        ) ;
-        if(isSet($_SERVER['HTTP_X_FILE_SIZE'])){
+        if($headersCheck && isSet($_SERVER['HTTP_X_FILE_SIZE'])){
             if($_SERVER['CONTENT_LENGTH'] != $_SERVER['HTTP_X_FILE_SIZE'])  {
                 exit('Warning, wrong headers');
             }
         }
-	    $fileNameH = $_SERVER['HTTP_X_FILE_NAME'];
-	    $fileSizeH = $_SERVER['CONTENT_LENGTH'];
+	    $fileNameH = $_SERVER['HTTP_X_FILE_NAME'] ?? '';
+	    $fileSizeH = $_SERVER['CONTENT_LENGTH'] ?? 0;
 
         if(dirname($httpVars["dir"]) == "/" && basename($httpVars["dir"]) == $fileNameH){
             $httpVars["dir"] = "/";

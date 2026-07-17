@@ -188,7 +188,12 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
     }
 
     if($scope == APP_METADATA_SCOPE_GLOBAL){
-      $metaFile = dirname($currentFile)."/".$this->options["METADATA_FILE"];
+      $pathPart = $node->getPath();
+      if($pathPart === "" || $pathPart === "/"){
+        $metaFile = rtrim($currentFile, "/")."/".$this->options["METADATA_FILE"];
+      }else{
+        $metaFile = dirname($currentFile)."/".$this->options["METADATA_FILE"];
+      }
       if(preg_match("/\.zip\//",$currentFile)){
         self::$fullMetaCache[$metaFile] = array();
         self::$metaCache = array();
@@ -203,7 +208,11 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
 
     if(!isSet(self::$fullMetaCache[$metaFile])){
       self::$currentMetaName = $metaFile;
-      $rawData = @file_get_contents($metaFile);
+      // Missing .metadata is normal for empty/fresh folders; treat as empty store.
+      $rawData = false;
+      if(@file_exists($metaFile)){
+        $rawData = @file_get_contents($metaFile);
+      }
       
       if($rawData !== false){
         if (preg_match("/^[\[\{]/",$rawData)) {
@@ -218,7 +227,7 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
       if(isSet(self::$fullMetaCache[$metaFile][$fileKey][$userId])){
         self::$metaCache = self::$fullMetaCache[$metaFile][$fileKey][$userId];
       }else{
-        if($this->options["UPGRADE_FROM_METASERIAL"] == true && count(self::$fullMetaCache[$metaFile]) && !isSet(self::$fullMetaCache[$metaFile]["APP_METASTORE_UPGRADED"])){
+        if(!empty($this->options["UPGRADE_FROM_METASERIAL"]) && count(self::$fullMetaCache[$metaFile]) && !isSet(self::$fullMetaCache[$metaFile]["APP_METASTORE_UPGRADED"])){
           self::$fullMetaCache[$metaFile] = $this->upgradeDataFromMetaSerial(self::$fullMetaCache[$metaFile]);
           if(isSet(self::$fullMetaCache[$metaFile][$fileKey][$userId])){
             self::$metaCache = self::$fullMetaCache[$metaFile][$fileKey][$userId];
@@ -249,7 +258,12 @@ class SerialMetaStore extends Plugin implements MetaStoreProvider {
       $scope = APP_METADATA_SCOPE_REPOSITORY;
     }
     if($scope == APP_METADATA_SCOPE_GLOBAL){
-      $metaFile = dirname($currentFile)."/".$this->options["METADATA_FILE"];
+      $pathPart = $node->getPath();
+      if($pathPart === "" || $pathPart === "/"){
+        $metaFile = rtrim($currentFile, "/")."/".$this->options["METADATA_FILE"];
+      }else{
+        $metaFile = dirname($currentFile)."/".$this->options["METADATA_FILE"];
+      }
       $fileKey = basename($fileKey);
     }else{
       if(!is_dir(dirname($this->globalMetaFile))){

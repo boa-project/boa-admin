@@ -29,6 +29,8 @@
  */
 namespace BoA\Core\Security;
 
+use BoA\Core\Services\AuthService;
+
 defined('APP_EXEC') or die( 'Access not allowed');
 
 /**
@@ -42,18 +44,12 @@ class Credential{
 	
 	private $user;
 	private $encodedPassword;
-	private $secretKey;	
 	private $separator = "__SAFE_SEPARATOR__";
 	private $forceSessionCredentials = false;
 	/**
      * Instance constructor
      */
 	public function __construct(){
-		if(defined('APP_SAFE_SECRET_KEY')){
-			$this->secretKey = APP_SAFE_SECRET_KEY;
-		}else{
-			$this->secretKey = "\1CDAFx¨op#";
-		}
 	} 
 	/**
      * Store the user/password pair. Password will be encoded
@@ -83,36 +79,26 @@ class Credential{
 		}
 	}
 	/**
-     * Use mcrypt function to encode the password
+     * Encode password with OpenSSL AES-256-GCM (Crypto helper).
      * @param $password
      * @param $user
      * @return string
      */
 	private function _encodePassword($password, $user){
-		if (function_exists('mcrypt_encrypt'))
-        {
-	        // The initialisation vector is only required to avoid a warning, as ECB ignore IV
-	        $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND);
-	        // We encode as base64 so if we need to store the result in a database, it can be stored in text column
-	        $password = base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256,  md5($user.$this->secretKey), $password, MCRYPT_MODE_ECB, $iv));
-        }
-		return $password;
+		if (!Crypto::isAvailable()) {
+			return $password;
+		}
+		return Crypto::encrypt($password, 'credential:'.$user);
 	}
 	/**
-     * Use mcrypt functions to decode the password
+     * Decode password; legacy mcrypt payloads return false / empty (no dual-read).
      * @param $encoded
      * @param $user
      * @return string
      */
 	private function _decodePassword($encoded, $user){
-        if (function_exists('mcrypt_decrypt'))
-        {
-             // The initialisation vector is only required to avoid a warning, as ECB ignore IV
-             $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND);
-             // We have encoded as base64 so if we need to store the result in a database, it can be stored in text column
-             $encoded = trim(mcrypt_decrypt(MCRYPT_RIJNDAEL_256, md5($user.$this->secretKey), base64_decode($encoded), MCRYPT_MODE_ECB, $iv), "\0");
-        }
-		return $encoded;
+		$decoded = Crypto::decrypt($encoded, 'credential:'.$user);
+		return ($decoded === false) ? '' : $decoded;
 	}
 	/**
      * Store the password credentials in the session

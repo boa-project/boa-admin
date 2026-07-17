@@ -503,6 +503,12 @@ class Securimage {
 	 * </code>
 	 *
 	 */
+	function __construct()
+	{
+		$this->Securimage();
+	}
+
+	/** @deprecated Prefer __construct(); kept for older call sites */
 	function Securimage()
 	{
 		// Initialize session or attach to existing
@@ -873,7 +879,7 @@ class Securimage {
 						$font_color = $this->gdtextcolor;
 					}
 					
-					$ch = $this->code{$i};
+					$ch = $this->code[$i];
 					 
 					imagettftext($this->tmpimg, $font_size, $angle, $x, $y, $font_color, $this->ttf_file, $ch);
 					 
@@ -1002,7 +1008,7 @@ class Securimage {
 		$code = '';
 
 		for($i = 1, $cslen = strlen($this->charset); $i <= $len; ++$i) {
-			$code .= $this->charset{rand(0, $cslen - 1)};
+			$code .= $this->charset[rand(0, $cslen - 1)];
 		}
 		return $code;
 	}
@@ -1094,7 +1100,7 @@ class Securimage {
 		}
 
 		for($i = 0; $i < strlen($code); ++$i) {
-			$letters[] = $code{$i};
+			$letters[] = $code[$i];
 		}
 
 		if ($format == 'mp3') {
@@ -1300,10 +1306,10 @@ class Securimage {
 		$datalen = strlen($data) - $start - 256; // leave last 256 bytes unchanged
 		 
 		for ($i = $start; $i < $datalen; $i += 64) {
-			$ch = ord($data{$i});
+			$ch = ord($data[$i]);
 			if ($ch < 9 || $ch > 119) continue;
 
-			$data{$i} = chr($ch + rand(-8, 8));
+			$data[$i] = chr($ch + rand(-8, 8));
 		}
 	}
 
@@ -1551,6 +1557,12 @@ class Securimage_Color {
 	 * @param $green Green component 0-255
 	 * @param $blue Blue component 0-255
 	 */
+	function __construct($red, $green = null, $blue = null)
+	{
+		$this->Securimage_Color($red, $green, $blue);
+	}
+
+	/** @deprecated Prefer __construct(); kept for older call sites */
 	function Securimage_Color($red, $green = null, $blue = null)
 	{
 		if ($green == null && $blue == null && preg_match('/^#[a-f0-9]{3,6}$/i', $red)) {

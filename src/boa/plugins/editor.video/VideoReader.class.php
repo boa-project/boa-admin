@@ -262,7 +262,8 @@ class VideoReader extends Plugin implements ITaskProviderFactory {
 		//$boxData["size"]
 		//1603300
 
-		$extension = strpos($boxData["name"], ".") ? array_pop(explode('.', $boxData["name"])) : "";
+		$nameParts = explode('.', $boxData["name"]);
+		$extension = strpos($boxData["name"], ".") ? array_pop($nameParts) : "";
 		$extension = strtolower($extension);
 
 		if (($isThumbnail && !preg_match("/^(?:jpe?g|png)$/", $extension)) ||

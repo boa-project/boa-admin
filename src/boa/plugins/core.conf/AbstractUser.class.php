@@ -29,6 +29,7 @@
  */
 namespace BoA\Plugins\Core\Conf;
 
+use BoA\Core\Security\Crypto;
 use BoA\Core\Security\Role;
 use BoA\Core\Services\ConfService;
 
@@ -346,14 +347,8 @@ abstract class AbstractUser
 
     /** Decode a user supplied password before using it */
     function decodeUserPassword($password){
-        if (function_exists('mcrypt_decrypt'))
-        {
-             // The initialisation vector is only required to avoid a warning, as ECB ignore IV
-             $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND);
-             // We have encoded as base64 so if we need to store the result in a database, it can be stored in text column
-             $password = trim(mcrypt_decrypt(MCRYPT_RIJNDAEL_256, md5($this->getId()."\1CDAFx¨op#"), base64_decode($password), MCRYPT_MODE_ECB, $iv), "\0");
-        }
-        return $password;
+        $decoded = \BoA\Core\Security\Crypto::decrypt($password, 'userpass:'.$this->getId());
+        return ($decoded === false) ? '' : $decoded;
     }
 
     public function setGroupPath($groupPath, $update = false)
@@ -372,7 +367,8 @@ abstract class AbstractUser
             throw new Exception("Empty role, this is not normal");
         }
         uksort($this->roles, array($this, "orderRoles"));
-        $this->mergedRole =  $this->roles[array_shift(array_keys($this->roles))];
+        $roleKeys = array_keys($this->roles);
+        $this->mergedRole =  $this->roles[array_shift($roleKeys)];
         if(count($this->roles) > 1){
             $this->parentRole = $this->mergedRole;
         }

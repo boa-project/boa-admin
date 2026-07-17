@@ -35,6 +35,7 @@ use BoA\Core\Plugins\Plugin;
 use BoA\Core\Services\AuthService;
 use BoA\Core\Services\ConfService;
 use BoA\Core\Services\PluginsService;
+use BoA\Core\Security\Crypto;
 use BoA\Core\Utils\Filters\VarsFilter;
 use BoA\Core\Utils\JSPacker;
 use BoA\Core\Utils\Text\SystemTextEncoding;
@@ -244,7 +245,7 @@ class Utils
             $errorsArray[UPLOAD_ERR_INI_SIZE] = array(410, "No file found on server!");
             if ($userfile_error == UPLOAD_ERR_NO_FILE) {
                 // OPERA HACK, do not display "no file found error"
-                if (!ereg('Opera', $_SERVER['HTTP_USER_AGENT'])) {
+                if (!str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'Opera')) {
                     return $errorsArray[$userfile_error];
                 }
             }
@@ -279,7 +280,8 @@ class Utils
 
         if (isSet($parameters["repository_id"]) && isSet($parameters["folder"]) || isSet($parameters["goto"])) {
             if(isSet($parameters["goto"])){
-                $repoId = array_shift(explode("/", ltrim($parameters["goto"], "/")));
+                $gotoParts = explode("/", ltrim($parameters["goto"], "/"));
+                $repoId = array_shift($gotoParts);
                 $parameters["folder"] = ltrim(ltrim($parameters["goto"], "/"), $repoId);
             }else{
                 $repoId = $parameters["repository_id"];
@@ -350,7 +352,7 @@ class Utils
             if (isSet($session["USE_EXISTING_TOKEN_IF_EXISTS"])) {
                 unset($session["USE_EXISTING_TOKEN_IF_EXISTS"]);
             }
-            setcookie("APP_GUI", null);
+            setcookie("APP_GUI", "");
         }
     }
 
@@ -776,13 +778,14 @@ class Utils
             Logger::debug("WARNING, THE SERVER_URL IS NOT SET, WE CANNOT BUILD THE MAIL ADRESS WHEN WORKING IN CLI");
         }
         $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http');
-        $port = (($protocol === 'http' && $_SERVER['SERVER_PORT'] == 80 || $protocol === 'https' && $_SERVER['SERVER_PORT'] == 443)
-                ? "" : ":" . $_SERVER['SERVER_PORT']);
-        $name = $_SERVER["SERVER_NAME"];
+        $serverPort = $_SERVER['SERVER_PORT'] ?? (($protocol === 'https') ? 443 : 80);
+        $port = (($protocol === 'http' && $serverPort == 80 || $protocol === 'https' && $serverPort == 443)
+                ? "" : ":" . $serverPort);
+        $name = $_SERVER["SERVER_NAME"] ?? "localhost";
         if(!$withURI){
             return "$protocol://$name$port";
         }else{
-            return "$protocol://$name$port".dirname($_SERVER["REQUEST_URI"]);
+            return "$protocol://$name$port".dirname($_SERVER["REQUEST_URI"] ?? "/");
         }
     }
 
@@ -1305,9 +1308,9 @@ class Utils
     {
         $isMobile = false;
 
-        $op = strtolower($_SERVER['HTTP_X_OPERAMINI_PHONE'] OR "");
-        $ua = strtolower($_SERVER['HTTP_USER_AGENT']);
-        $ac = strtolower($_SERVER['HTTP_ACCEPT']);
+        $op = strtolower($_SERVER['HTTP_X_OPERAMINI_PHONE'] ?? "");
+        $ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? "");
+        $ac = strtolower($_SERVER['HTTP_ACCEPT'] ?? "");
         $isMobile = strpos($ac, 'application/vnd.wap.xhtml+xml') !== false
                     || $op != ''
                     || strpos($ua, 'sony') !== false
@@ -1390,9 +1393,10 @@ class Utils
      */
     public static function userAgentIsIOS()
     {
-        if (stripos($_SERVER["HTTP_USER_AGENT"], "iphone") !== false) return true;
-        if (stripos($_SERVER["HTTP_USER_AGENT"], "ipad") !== false) return true;
-        if (stripos($_SERVER["HTTP_USER_AGENT"], "ipod") !== false) return true;
+        $ua = $_SERVER["HTTP_USER_AGENT"] ?? "";
+        if (stripos($ua, "iphone") !== false) return true;
+        if (stripos($ua, "ipad") !== false) return true;
+        if (stripos($ua, "ipod") !== false) return true;
         return false;
     }
     /**
@@ -1402,7 +1406,7 @@ class Utils
      */
     public static function userAgentIsAndroid()
     {
-        return (stripos($_SERVER["HTTP_USER_AGENT"], "android") !== false);
+        return (stripos($_SERVER["HTTP_USER_AGENT"] ?? "", "android") !== false);
     }
     /**
      * Try to remove a file without errors
@@ -1448,7 +1452,8 @@ class Utils
             return $return;
         }else{
             $i = parse_url($url);
-            $httpClient = new HttpClient($i["host"]);
+            $host = is_array($i) ? ($i["host"] ?? "") : "";
+            $httpClient = new HttpClient($host);
             $httpClient->timeout = 30;
             return $httpClient->quickGet($url);
         }
@@ -1478,12 +1483,9 @@ class Utils
                     }else if($type == "array"){
                         $value = explode(",", $value);
                     }else if($type == "password" && $userId!=null){
-                        if (trim($value != "") && function_exists('mcrypt_encrypt'))
+                        if (trim($value) != "" && \BoA\Core\Security\Crypto::isAvailable())
                         {
-                            // The initialisation vector is only required to avoid a warning, as ECB ignore IV
-                            $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND);
-                            // We encode as base64 so if we need to store the result in a database, it can be stored in text column
-                            $value = base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256,  md5($userId."\1CDAFx¨op#"), $value, MCRYPT_MODE_ECB, $iv));
+                            $value = \BoA\Core\Security\Crypto::encrypt($value, 'userpass:'.$userId);
                         }
                     }else if($type == "binary" && $binariesContext !== null){
                         if(!empty($value)){
@@ -1566,57 +1568,89 @@ class Utils
                 unset($params["group_switch_value"]);
             }
             foreach($params as $k => $v){
-                $params[array_pop(explode("_", $k, 2))] = VarsFilter::filter($v);
+                $parts = explode("_", $k, 2);
+                $params[array_pop($parts)] = VarsFilter::filter($v);
                 unset($params[$k]);
             }
         }
         return $params;
     }
 
-    public static function runCreateTablesQuery($p, $file){
-        require_once(APP_VENDOR_FOLDER."/dibi/dibi.compact.php");
-        $result = array();
-        if($p["driver"] == "sqlite" || $p["driver"] == "sqlite3"){
-            if(!file_exists(dirname($p["database"]))){
-                @mkdir(dirname($p["database"]), 0755, true);
-            }
-            \dibi::connect($p);
-            $file = dirname($file) ."/". str_replace(".sql", ".sqlite", basename($file) );
-            $sql = file_get_contents($file);
-            \dibi::begin();
-            $parts = explode("CREATE TABLE", $sql);
-            foreach($parts as $createPart){
-                if(empty($createPart)) continue;
-                $sqlPart = trim("CREATE TABLE".$createPart);
-                try{
-                    \dibi::nativeQuery($sqlPart);
-                    $resKey = str_replace("\n", "", substr($sqlPart, 0, 50))."...";
-                    $result[] = "OK: $resKey executed successfully";
-                }catch (\DibiException $e){
-                    $result[] = "ERROR! $sqlPart failed";
+    /**
+     * Build a PDO connection from dibi-shaped driver parameter arrays (boot/SQL plugins).
+     *
+     * @param array $p
+     * @return \PDO
+     * @throws \InvalidArgumentException|\PDOException
+     */
+    public static function pdoConnectFromDibiParams(array $p)
+    {
+        $driver = isset($p['driver']) ? strtolower((string) $p['driver']) : '';
+        $user = isset($p['username']) ? $p['username'] : (isset($p['user']) ? $p['user'] : null);
+        $pass = isset($p['password']) ? $p['password'] : (isset($p['pass']) ? $p['pass'] : null);
+
+        switch ($driver) {
+            case 'sqlite':
+            case 'sqlite3':
+                $database = isset($p['database']) ? VarsFilter::filter($p['database']) : '';
+                if ($database === '') {
+                    throw new \InvalidArgumentException('SQLite database path is required');
                 }
-            }
-            $message = implode("\n", $result);
-            \dibi::commit();
-            \dibi::disconnect();
-        }else{
-            \dibi::connect($p);
-            $sql = file_get_contents($file);
-            $parts = explode("CREATE TABLE", $sql);
-            foreach($parts as $createPart){
-                if(empty($createPart)) continue;
-                $sqlPart = trim("CREATE TABLE".$createPart);
-                try{
-                    \dibi::nativeQuery($sqlPart);
-                    $resKey = str_replace("\n", "", substr($sqlPart, 0, 50))."...";
-                    $result[] = "OK: $resKey executed successfully";
-                }catch (\DibiException $e){
-                    $result[] = "ERROR! $sqlPart failed";
+                $dir = dirname($database);
+                if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+                    throw new \RuntimeException('Cannot create SQLite directory '.$dir);
                 }
-            }
-            $message = implode("\n", $result);
-            \dibi::disconnect();
+                $dsn = 'sqlite:'.$database;
+                return new \PDO($dsn);
+            case 'mysql':
+            case 'mysqli':
+                $host = isset($p['host']) ? $p['host'] : (isset($p['hostname']) ? $p['hostname'] : '127.0.0.1');
+                $database = isset($p['database']) ? $p['database'] : '';
+                $port = isset($p['port']) ? ';port='.$p['port'] : '';
+                $dsn = 'mysql:host='.$host.$port.';dbname='.$database.';charset=utf8mb4';
+                return new \PDO($dsn, $user, $pass);
+            case 'pgsql':
+            case 'postgre':
+            case 'postgresql':
+                $host = isset($p['host']) ? $p['host'] : (isset($p['hostname']) ? $p['hostname'] : '127.0.0.1');
+                $database = isset($p['database']) ? $p['database'] : '';
+                $port = isset($p['port']) ? ';port='.$p['port'] : '';
+                $dsn = 'pgsql:host='.$host.$port.';dbname='.$database;
+                return new \PDO($dsn, $user, $pass);
+            default:
+                throw new \InvalidArgumentException('Unsupported SQL driver for PDO bridge: '.$driver);
         }
+    }
+
+    public static function runCreateTablesQuery($p, $file){
+        $result = array();
+        $pdo = self::pdoConnectFromDibiParams($p);
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+        if($p["driver"] == "sqlite" || $p["driver"] == "sqlite3"){
+            $file = dirname($file) ."/". str_replace(".sql", ".sqlite", basename($file) );
+        }
+        $sql = file_get_contents($file);
+        $parts = explode("CREATE TABLE", $sql);
+        $useTxn = ($p["driver"] == "sqlite" || $p["driver"] == "sqlite3");
+        if($useTxn){
+            $pdo->beginTransaction();
+        }
+        foreach($parts as $createPart){
+            if(empty($createPart)) continue;
+            $sqlPart = trim("CREATE TABLE".$createPart);
+            try{
+                $pdo->exec($sqlPart);
+                $resKey = str_replace("\n", "", substr($sqlPart, 0, 50))."...";
+                $result[] = "OK: $resKey executed successfully";
+            }catch (\PDOException $e){
+                $result[] = "ERROR! $sqlPart failed";
+            }
+        }
+        if($useTxn){
+            $pdo->commit();
+        }
+        $message = implode("\n", $result);
         if(strpos($message, "ERROR!")) return $message;
         else return "SUCCESS:".$message;
 

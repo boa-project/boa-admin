@@ -79,10 +79,13 @@ $optUser = $options["u"];
 if(isSet($options["p"])){
 	$optPass = $options["p"];
 }else{
-	// Consider "u" is a crypted version of u:p
+	// Consider "u" is a crypted version of the user id
 	$optToken = $options["t"];
-	$iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND);
-    $optUser = trim(mcrypt_decrypt(MCRYPT_RIJNDAEL_256, md5($optToken."\1CDAFx¨op#"), base64_decode($optUser), MCRYPT_MODE_ECB, $iv), "\0");
+	$decoded = \BoA\Core\Security\Crypto::decrypt(base64_decode($optUser), 'cli:'.$optToken);
+	if ($decoded === false) {
+		die("Unable to decrypt CLI user token (legacy mcrypt tokens are no longer supported)");
+	}
+	$optUser = $decoded;
 }
 if(strpos($optUser,",") !== false){
     $originalOptUser = $optUser;

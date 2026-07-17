@@ -304,7 +304,7 @@ class ManifestNode{
      * @return string The scheme part of the url
      */
 	public function getScheme(){
-		return $this->urlParts["scheme"];
+		return $this->urlParts["scheme"] ?? "";
 	}
 
     /**
@@ -386,9 +386,15 @@ class ManifestNode{
         }else{
             $this->urlParts = parse_url($this->_url);
         }
-		if(strstr($this->urlParts["scheme"], "app.")!==false){
+        // PHP parse_url omits "path" for scheme://host URLs (e.g. app.fs://0).
+        if (!isset($this->urlParts["path"])) {
+            $this->urlParts["path"] = "";
+        }
+        // Relative paths (e.g. "/myfolder") have no scheme — same as pre-PHP8 null/empty.
+        $scheme = $this->urlParts["scheme"] ?? "";
+		if($scheme !== "" && strstr($scheme, "app.")!==false){
 			$pServ = PluginsService::getInstance();
-			$this->_wrapperClassName = $pServ->getWrapperClassName($this->urlParts["scheme"]);
+			$this->_wrapperClassName = $pServ->getWrapperClassName($scheme);
 		}
 	}
 	

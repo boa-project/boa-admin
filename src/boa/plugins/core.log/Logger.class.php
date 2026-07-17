@@ -24,11 +24,13 @@ use BoA\Core\Services\PluginsService;
 
 defined('APP_EXEC') or die( 'Access not allowed');
 
-define("LOG_LEVEL_DEBUG", "Debug");
-define("LOG_LEVEL_INFO", "Info");
-define("LOG_LEVEL_NOTICE", "Notice");
-define("LOG_LEVEL_WARNING", "Warning");
-define("LOG_LEVEL_ERROR", "Error");
+if (!defined('LOG_LEVEL_DEBUG')) {
+    define("LOG_LEVEL_DEBUG", "Debug");
+    define("LOG_LEVEL_INFO", "Info");
+    define("LOG_LEVEL_NOTICE", "Notice");
+    define("LOG_LEVEL_WARNING", "Warning");
+    define("LOG_LEVEL_ERROR", "Error");
+}
 /**
  * Provides static access to the logging mechanism
  *

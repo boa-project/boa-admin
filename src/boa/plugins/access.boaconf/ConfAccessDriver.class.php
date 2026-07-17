@@ -145,7 +145,7 @@ class ConfAccessDriver extends AbstractAccessDriver
                 break;
             case "parameters_to_form_definitions" :
 
-                $data = json_decode(Utils::decodeSecureMagic($httpVars["json_parameters"]), true);
+                $data = json_decode(Utils::decodeSecureMagic($httpVars["json_parameters"] ?? ""), true);
                 XMLWriter::header("standard_form");
                 foreach($data as $repoScope => $pluginsData){
                     echo("<repoScope id='$repoScope'>");
@@ -202,7 +202,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 		
 		if($action == "edit"){
 			if(isSet($httpVars["sub_action"])){
-				$action = $httpVars["sub_action"];
+				$action = $httpVars["sub_action"] ?? "";
 			}
 		}
 		$mess = ConfService::getMessages();
@@ -306,7 +306,7 @@ class ConfAccessDriver extends AbstractAccessDriver
                     unset($rootNodes["developer"]);
                 }
                 Controller::applyHook("conf.list_config_nodes", array(&$rootNodes));
-				$dir = trim(Utils::decodeSecureMagic((isset($httpVars["dir"])?$httpVars["dir"]:"")), " /");
+				$dir = trim(Utils::decodeSecureMagic((isset($httpVars["dir"])?$httpVars["dir"] ?? "":"")), " /");
                 if($dir != ""){
                     $hash = null;
                     if(strstr(urldecode($dir), "#") !== false){
@@ -336,8 +336,8 @@ class ConfAccessDriver extends AbstractAccessDriver
                     $nodes = $rootNodes;
                 }
                 if(isSet($httpVars["file"])){
-                    $parentName = $httpVars["dir"]."/";
-                    $nodes = array(basename($httpVars["file"]) =>  array("LABEL" => basename($httpVars["file"])));
+                    $parentName = ($httpVars["dir"] ?? "")."/";
+                    $nodes = array(basename($httpVars["file"] ?? "") =>  array("LABEL" => basename($httpVars["file"] ?? "")));
                 }
                 if(isSet($nodes)){
                     XMLWriter::header();
@@ -362,14 +362,14 @@ class ConfAccessDriver extends AbstractAccessDriver
             case "create_group":
 
                 if(isSet($httpVars["group_path"])){
-                    $basePath = dirname($httpVars["group_path"]);
+                    $basePath = dirname($httpVars["group_path"] ?? "");
                     if(empty($basePath)) $basePath = "/";
-                    $gName = Utils::sanitize(Utils::decodeSecureMagic(basename($httpVars["group_path"])), APP_SANITIZE_ALPHANUM);
+                    $gName = Utils::sanitize(Utils::decodeSecureMagic(basename($httpVars["group_path"] ?? "")), APP_SANITIZE_ALPHANUM);
                 }else{
-                    $basePath = substr($httpVars["dir"], strlen("/data/users"));
-                    $gName    = Utils::sanitize(SystemTextEncoding::magicDequote($httpVars["group_name"]), APP_SANITIZE_ALPHANUM);
+                    $basePath = substr($httpVars["dir"] ?? "", strlen("/data/users"));
+                    $gName    = Utils::sanitize(SystemTextEncoding::magicDequote($httpVars["group_name"] ?? ""), APP_SANITIZE_ALPHANUM);
                 }
-                $gLabel   = Utils::decodeSecureMagic($httpVars["group_label"]);
+                $gLabel   = Utils::decodeSecureMagic($httpVars["group_label"] ?? "");
                 AuthService::createGroup($basePath, $gName, $gLabel);
                 XMLWriter::header();
                 XMLWriter::reloadDataNode();
@@ -378,7 +378,7 @@ class ConfAccessDriver extends AbstractAccessDriver
             break;
 
             case "create_role":
-				$roleId = Utils::sanitize(SystemTextEncoding::magicDequote($httpVars["role_id"]), APP_SANITIZE_HTML_STRICT);
+				$roleId = Utils::sanitize(SystemTextEncoding::magicDequote($httpVars["role_id"] ?? ""), APP_SANITIZE_HTML_STRICT);
 				if(!strlen($roleId)){
 					throw new \Exception($mess[349]);
 				}
@@ -392,12 +392,12 @@ class ConfAccessDriver extends AbstractAccessDriver
 				AuthService::updateRole($r);
 				XMLWriter::header();
 				XMLWriter::sendMessage($mess["boaconf.66"], null);
-				XMLWriter::reloadDataNode("", $httpVars["role_id"]);
+				XMLWriter::reloadDataNode("", $httpVars["role_id"] ?? "");
 				XMLWriter::close();				
 			break;
 			
 			case "edit_role" :
-				$roleId = SystemTextEncoding::magicDequote($httpVars["role_id"]);
+				$roleId = SystemTextEncoding::magicDequote($httpVars["role_id"] ?? "");
                 $roleGroup = false;
                 if(strpos($roleId, "APP_GRP_") === 0){
                     $groupPath = AuthService::filterBaseGroup(substr($roleId, strlen("APP_GRP_/")));
@@ -422,7 +422,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 				if($role === false) {
                     throw new \Exception("Cant find role! ");
 				}
-                if(isSet($httpVars["format"]) && $httpVars["format"] == "json"){
+                if(isSet($httpVars["format"]) && ($httpVars["format"] ?? "") == "json"){
                     HTMLWriter::charsetHeader("application/json");
                     $roleData = $role->getDataArray();
                     $repos = ConfService::getAccessibleRepositories($userObject, true, true, ($userObject == null ? true:false));
@@ -469,7 +469,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 
             case "post_json_role" :
 
-                $roleId = SystemTextEncoding::magicDequote($httpVars["role_id"]);
+                $roleId = SystemTextEncoding::magicDequote($httpVars["role_id"] ?? "");
                 $roleGroup = false;
                 if(strpos($roleId, "APP_GRP_") === 0){
                     $groupPath = AuthService::filterBaseGroup(substr($roleId, strlen("APP_GRP_")));
@@ -494,7 +494,7 @@ class ConfAccessDriver extends AbstractAccessDriver
                     throw new \Exception("Cant find role! ");
                 }
 
-                $jsonData = Utils::decodeSecureMagic($httpVars["json_data"]);
+                $jsonData = Utils::decodeSecureMagic($httpVars["json_data"] ?? "");
                 $data = json_decode($jsonData, true);
                 $roleData = $data["ROLE"];
                 $forms = $data["FORMS"];
@@ -545,9 +545,9 @@ class ConfAccessDriver extends AbstractAccessDriver
 
             case "user_set_lock" :
 
-                $userId = Utils::decodeSecureMagic($httpVars["user_id"]);
-                $lock = ($httpVars["lock"] == "true" ? true : false);
-                $lockType = $httpVars["lock_type"];
+                $userId = Utils::decodeSecureMagic($httpVars["user_id"] ?? "");
+                $lock = (($httpVars["lock"] ?? "") == "true" ? true : false);
+                $lockType = $httpVars["lock_type"] ?? "";
                 if(AuthService::userExists($userId)){
                     $userObject = ConfService::getConfStorageImpl()->createUserObject($userId);
                     if($lock){
@@ -562,14 +562,14 @@ class ConfAccessDriver extends AbstractAccessDriver
 
 			case "create_user" :
 				
-				if(!isset($httpVars["new_user_login"]) || $httpVars["new_user_login"] == "" ||!isset($httpVars["new_user_pwd"]) || $httpVars["new_user_pwd"] == "")
+				if(!isset($httpVars["new_user_login"]) || ($httpVars["new_user_login"] ?? "") == "" ||!isset($httpVars["new_user_pwd"]) || ($httpVars["new_user_pwd"] ?? "") == "")
 				{
 					XMLWriter::header();
 					XMLWriter::sendMessage(null, $mess["boaconf.61"]);
 					XMLWriter::close();
 					return;						
 				}
-				$new_user_login = Utils::sanitize(SystemTextEncoding::magicDequote($httpVars["new_user_login"]), APP_SANITIZE_EMAILCHARS);
+				$new_user_login = Utils::sanitize(SystemTextEncoding::magicDequote($httpVars["new_user_login"] ?? ""), APP_SANITIZE_EMAILCHARS);
 				if(AuthService::userExists($new_user_login, "w") || AuthService::isReservedUserId($new_user_login))
 				{
 					XMLWriter::header();
@@ -578,13 +578,13 @@ class ConfAccessDriver extends AbstractAccessDriver
 					return;									
 				}
 
-                AuthService::createUser($new_user_login, $httpVars["new_user_pwd"]);
+                AuthService::createUser($new_user_login, $httpVars["new_user_pwd"] ?? "");
                 $confStorage = ConfService::getConfStorageImpl();
 				$newUser = $confStorage->createUserObject($new_user_login);
                 $basePath = AuthService::getLoggedUser()->getGroupPath();
                 if(empty ($basePath)) $basePath = "/";
                 if(!empty($httpVars["group_path"])){
-                    $newUser->setGroupPath($basePath.ltrim($httpVars["group_path"], "/"));
+                    $newUser->setGroupPath($basePath.ltrim($httpVars["group_path"] ?? "", "/"));
                 }else{
                     $newUser->setGroupPath($basePath);
                 }
@@ -598,16 +598,16 @@ class ConfAccessDriver extends AbstractAccessDriver
 			break;
 								
 			case "change_admin_right" :
-				$userId = $httpVars["user_id"];
+				$userId = $httpVars["user_id"] ?? "";
 				if(!AuthService::userExists($userId)){
 					throw new \Exception("Invalid user id!");
 				}				
 				$confStorage = ConfService::getConfStorageImpl();		
 				$user = $confStorage->createUserObject($userId);
-				$user->setAdmin(($httpVars["right_value"]=="1"?true:false));
+				$user->setAdmin((($httpVars["right_value"] ?? "")=="1"?true:false));
 				$user->save("superuser");
 				XMLWriter::header();
-				XMLWriter::sendMessage($mess["boaconf.45"].$httpVars["user_id"], null);
+				XMLWriter::sendMessage($mess["boaconf.45"].$httpVars["user_id"] ?? "", null);
 				XMLWriter::reloadDataNode();
 				XMLWriter::close();
 				
@@ -617,25 +617,25 @@ class ConfAccessDriver extends AbstractAccessDriver
 				if(!isSet($httpVars["user_id"]) 
 					|| !isSet($httpVars["repository_id"]) 
 					|| !isSet($httpVars["right"])
-					|| !AuthService::userExists($httpVars["user_id"]))
+					|| !AuthService::userExists($httpVars["user_id"] ?? ""))
 				{
 					XMLWriter::header();
 					XMLWriter::sendMessage(null, $mess["boaconf.61"]);
-					print("<update_checkboxes user_id=\"".$httpVars["user_id"]."\" repository_id=\"".$httpVars["repository_id"]."\" read=\"old\" write=\"old\"/>");
+					print("<update_checkboxes user_id=\"".($httpVars["user_id"] ?? "")."\" repository_id=\"".($httpVars["repository_id"] ?? "")."\" read=\"old\" write=\"old\"/>");
 					XMLWriter::close();
 					return;
 				}
 				$confStorage = ConfService::getConfStorageImpl();		
-				$user = $confStorage->createUserObject($httpVars["user_id"]);
-				$user->personalRole->setAcl(Utils::sanitize($httpVars["repository_id"], APP_SANITIZE_ALPHANUM), Utils::sanitize($httpVars["right"], APP_SANITIZE_ALPHANUM));
+				$user = $confStorage->createUserObject($httpVars["user_id"] ?? "");
+				$user->personalRole->setAcl(Utils::sanitize($httpVars["repository_id"] ?? "", APP_SANITIZE_ALPHANUM), Utils::sanitize($httpVars["right"] ?? "", APP_SANITIZE_ALPHANUM));
 				$user->save();
 				$loggedUser = AuthService::getLoggedUser();
 				if($loggedUser->getId() == $user->getId()){
 					AuthService::updateUser($user);
 				}
 				XMLWriter::header();
-				XMLWriter::sendMessage($mess["boaconf.46"].$httpVars["user_id"], null);
-				print("<update_checkboxes user_id=\"".$httpVars["user_id"]."\" repository_id=\"".$httpVars["repository_id"]."\" read=\"".$user->canRead($httpVars["repository_id"])."\" write=\"".$user->canWrite($httpVars["repository_id"])."\"/>");
+				XMLWriter::sendMessage($mess["boaconf.46"].$httpVars["user_id"] ?? "", null);
+				print("<update_checkboxes user_id=\"".($httpVars["user_id"] ?? "")."\" repository_id=\"".($httpVars["repository_id"] ?? "")."\" read=\"".$user->canRead($httpVars["repository_id"] ?? "")."\" write=\"".$user->canWrite($httpVars["repository_id"] ?? "")."\"/>");
 				XMLWriter::reloadRepositoryList();
 				XMLWriter::close();
 				return ;
@@ -645,11 +645,11 @@ class ConfAccessDriver extends AbstractAccessDriver
 
                 $userSelection = new UserSelection();
                 $userSelection->initFromHttpVars($httpVars);
-                $dir = $httpVars["dir"];
-                $dest = $httpVars["dest"];
+                $dir = $httpVars["dir"] ?? "";
+                $dest = $httpVars["dest"] ?? "";
                 if(isSet($httpVars["group_path"])){
                     // API Case
-                    $groupPath = $httpVars["group_path"];
+                    $groupPath = $httpVars["group_path"] ?? "";
                 }else{
                     if(strpos($dir, "/data/users",0)!==0 || strpos($dest, "/data/users",0)!==0){
                         break;
@@ -694,9 +694,9 @@ class ConfAccessDriver extends AbstractAccessDriver
 					$act = "remove";
 					$messId = "74";
 				}
-				$this->updateUserRole($httpVars["user_id"], $httpVars["role_id"], $act);
+				$this->updateUserRole($httpVars["user_id"] ?? "", $httpVars["role_id"] ?? "", $act);
 				XMLWriter::header();
-				XMLWriter::sendMessage($mess["boaconf.".$messId].$httpVars["user_id"], null);
+				XMLWriter::sendMessage($mess["boaconf.".$messId].$httpVars["user_id"] ?? "", null);
 				XMLWriter::close();
 				return ;
 				
@@ -711,8 +711,8 @@ class ConfAccessDriver extends AbstractAccessDriver
 				$detectedRoles = array();
 				
 				if(isSet($httpVars["role_id"]) && isset($httpVars["update_role_action"])){
-					$update = $httpVars["update_role_action"];
-					$roleId = $httpVars["role_id"];
+					$update = $httpVars["update_role_action"] ?? "";
+					$roleId = $httpVars["role_id"] ?? "";
 					if(AuthService::getRole($roleId) === false){
 						throw new \Exception("Invalid role id");
 					}
@@ -752,7 +752,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 			break;
 			
 			case "save_custom_user_params" : 
-				$userId = $httpVars["user_id"];
+				$userId = $httpVars["user_id"] ?? "";
 				if($userId == $loggedUser->getId()){
 					$user = $loggedUser;
 				}else{
@@ -772,13 +772,13 @@ class ConfAccessDriver extends AbstractAccessDriver
 					AuthService::updateUser($user);
 				}
 				XMLWriter::header();
-				XMLWriter::sendMessage($mess["boaconf.47"].$httpVars["user_id"], null);
+				XMLWriter::sendMessage($mess["boaconf.47"].$httpVars["user_id"] ?? "", null);
 				XMLWriter::close();
 					
 			break;
 			
 			case "save_repository_user_params" : 
-				$userId = $httpVars["user_id"];
+				$userId = $httpVars["user_id"] ?? "";
 				if($userId == $loggedUser->getId()){
 					$user = $loggedUser;
 				}else{
@@ -787,7 +787,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 				}
 				$wallet = $user->getPref("APP_WALLET");
 				if(!is_array($wallet)) $wallet = array();
-				$repoID = $httpVars["repository_id"];
+				$repoID = $httpVars["repository_id"] ?? "";
 				if(!array_key_exists($repoID, $wallet)){
 					$wallet[$repoID] = array();
 				}
@@ -801,7 +801,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 					AuthService::updateUser($user);
 				}
 				XMLWriter::header();
-				XMLWriter::sendMessage($mess["boaconf.47"].$httpVars["user_id"], null);
+				XMLWriter::sendMessage($mess["boaconf.47"].$httpVars["user_id"] ?? "", null);
 				XMLWriter::close();
 					
 			break;
@@ -814,11 +814,11 @@ class ConfAccessDriver extends AbstractAccessDriver
 					XMLWriter::close();
 					return;			
 				}
-				$res = AuthService::updatePassword($httpVars["user_id"], $httpVars["user_pwd"]);
+				$res = AuthService::updatePassword($httpVars["user_id"] ?? "", $httpVars["user_pwd"] ?? "");
 				XMLWriter::header();
 				if($res === true)
 				{
-					XMLWriter::sendMessage($mess["boaconf.48"].$httpVars["user_id"], null);
+					XMLWriter::sendMessage($mess["boaconf.48"].$httpVars["user_id"] ?? "", null);
 				}
 				else 
 				{
@@ -833,7 +833,7 @@ class ConfAccessDriver extends AbstractAccessDriver
                 if(!isSet($httpVars["user_id"]) || !AuthService::userExists($httpVars["user_id"]) ){
                     throw new \Exception($mess["boaconf.61"]);
                 }
-                $userId = $httpVars["user_id"];
+                $userId = $httpVars["user_id"] ?? "";
                 if($userId == $loggedUser->getId()){
                     $userObject = $loggedUser;
                 }else{
@@ -896,7 +896,7 @@ class ConfAccessDriver extends AbstractAccessDriver
                 unset($repDef["get_action"]);
                 unset($repDef["sf_checkboxes_active"]);
                 if(isSet($httpVars["json_data"])){
-                    $options = json_decode($httpVars["json_data"], true);
+                    $options = json_decode($httpVars["json_data"] ?? "", true);
                 }else{
                     $options = array();
                     $this->parseParameters($repDef, $options, null, true);
@@ -997,7 +997,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 			break;
 			
 			case "edit_repository" : 
-				$repId = $httpVars["repository_id"];
+				$repId = $httpVars["repository_id"] ?? "";
                 $repository = ConfService::getRepositoryById($repId);
                 if($repository == null){
                     throw new \Exception("Cannot find repository with id $repId");
@@ -1099,11 +1099,11 @@ class ConfAccessDriver extends AbstractAccessDriver
 			
 			case "edit_repository_label" : 
 			case "edit_repository_data" : 
-				$repId = $httpVars["repository_id"];
+				$repId = $httpVars["repository_id"] ?? "";
 				$repo = ConfService::getRepositoryById($repId);
 				$res = 0;
 				if(isSet($httpVars["newLabel"])){
-					$newLabel = Utils::decodeSecureMagic($httpVars["newLabel"]);
+					$newLabel = Utils::decodeSecureMagic($httpVars["newLabel"] ?? "");
                     if ($this->repositoryExists($newLabel))
                     {
 		     			XMLWriter::header();
@@ -1174,14 +1174,14 @@ class ConfAccessDriver extends AbstractAccessDriver
 			break;
 			
 			case "meta_source_add" :
-				$repId = $httpVars["repository_id"];
+				$repId = $httpVars["repository_id"] ?? "";
 				$repo = ConfService::getRepositoryById($repId);
 				if(!is_object($repo)){
 					throw new \Exception("Invalid repository id! $repId");
 				}
-				$metaSourceType = Utils::sanitize($httpVars["new_meta_source"], APP_SANITIZE_ALPHANUM);
+				$metaSourceType = Utils::sanitize($httpVars["new_meta_source"] ?? "", APP_SANITIZE_ALPHANUM);
                 if(isSet($httpVars["json_data"])){
-                    $options = json_decode($httpVars["json_data"], true);
+                    $options = json_decode($httpVars["json_data"] ?? "", true);
                 }else{
                     $options = array();
                     $this->parseParameters($httpVars, $options, null, true);
@@ -1204,12 +1204,12 @@ class ConfAccessDriver extends AbstractAccessDriver
 						
 			case "meta_source_delete" :
 			
-				$repId = $httpVars["repository_id"];
+				$repId = $httpVars["repository_id"] ?? "";
 				$repo = ConfService::getRepositoryById($repId);
 				if(!is_object($repo)){
 					throw new \Exception("Invalid repository id! $repId");
 				}
-				$metaSourceId = $httpVars["plugId"];
+				$metaSourceId = $httpVars["plugId"] ?? "";
 				$repoOptions = $repo->getOption("META_SOURCES");
 				if(is_array($repoOptions) && array_key_exists($metaSourceId, $repoOptions)){
 					unset($repoOptions[$metaSourceId]);
@@ -1224,18 +1224,18 @@ class ConfAccessDriver extends AbstractAccessDriver
 			break;
 			
 			case "meta_source_edit" :
-				$repId = $httpVars["repository_id"];
+				$repId = $httpVars["repository_id"] ?? "";
 				$repo = ConfService::getRepositoryById($repId);
 				if(!is_object($repo)){
 					throw new \Exception("Invalid repository id! $repId");
 				}				
-				$metaSourceId = $httpVars["plugId"];
+				$metaSourceId = $httpVars["plugId"] ?? "";
                 $repoOptions = $repo->getOption("META_SOURCES");
                 if(!is_array($repoOptions)){
                     $repoOptions = array();
                 }
                 if(isSet($httpVars["json_data"])){
-                    $options = json_decode($httpVars["json_data"], true);
+                    $options = json_decode($httpVars["json_data"] ?? "", true);
                 }else{
                     $options = array();
                     $this->parseParameters($httpVars, $options, null, true);
@@ -1253,21 +1253,21 @@ class ConfAccessDriver extends AbstractAccessDriver
 			case "delete" :
                 // REST API mapping
                 if(isSet($httpVars["data_type"])){
-                    switch($httpVars["data_type"]){
+                    switch($httpVars["data_type"] ?? ""){
                         case "repository":
-                            $httpVars["repository_id"] = basename($httpVars["data_id"]);
+                            $httpVars["repository_id"] = basename($httpVars["data_id"] ?? "");
                             break;
                         case "shared_file":
-                            $httpVars["shared_file"] = basename($httpVars["data_id"]);
+                            $httpVars["shared_file"] = basename($httpVars["data_id"] ?? "");
                             break;
                         case "role":
-                            $httpVars["role_id"] = basename($httpVars["data_id"]);
+                            $httpVars["role_id"] = basename($httpVars["data_id"] ?? "");
                             break;
                         case "user":
-                            $httpVars["user_id"] = basename($httpVars["data_id"]);
+                            $httpVars["user_id"] = basename($httpVars["data_id"] ?? "");
                             break;
                         case "group":
-                            $httpVars["group"] = "/data/users".$httpVars["data_id"];
+                            $httpVars["group"] = "/data/users".($httpVars["data_id"] ?? "");
                             break;
                         default:
                             break;
@@ -1276,7 +1276,7 @@ class ConfAccessDriver extends AbstractAccessDriver
                     unset($httpVars["data_id"]);
                 }
 				if(isSet($httpVars["repository_id"])){
-					$repId = $httpVars["repository_id"];					
+					$repId = $httpVars["repository_id"] ?? "";					
 					$res = ConfService::deleteRepository($repId);
 					XMLWriter::header();
 					if($res == -1){
@@ -1290,7 +1290,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 					return;
 				}else if(isSet($httpVars["shared_file"])){
 					XMLWriter::header();
-					$element = basename($httpVars["shared_file"]);
+					$element = basename($httpVars["shared_file"] ?? "");
 					$dlFolder = ConfService::getCoreConf("PUBLIC_DOWNLOAD_FOLDER");
 					$publicletData = $this->loadPublicletData($dlFolder."/".$element.".php");
 					unlink($dlFolder."/".$element.".php");
@@ -1298,7 +1298,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 					XMLWriter::reloadDataNode();
 					XMLWriter::close();					
 				}else if(isSet($httpVars["role_id"])){
-					$roleId = $httpVars["role_id"];
+					$roleId = $httpVars["role_id"] ?? "";
 					if(AuthService::getRole($roleId) === false){
 						throw new \Exception($mess["boaconf.67"]);
 					}
@@ -1308,7 +1308,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 					XMLWriter::reloadDataNode();
 					XMLWriter::close();
                 }else if(isSet($httpVars["group"])){
-                    $groupPath = $httpVars["group"];
+                    $groupPath = $httpVars["group"] ?? "";
                     $basePath = substr(dirname($groupPath), strlen("/data/users"));
                     $gName = basename($groupPath);
                     AuthService::deleteGroup($basePath, $gName);
@@ -1316,15 +1316,15 @@ class ConfAccessDriver extends AbstractAccessDriver
                     XMLWriter::reloadDataNode();
                     XMLWriter::close();
                 }else{
-					if(!isset($httpVars["user_id"]) || $httpVars["user_id"]==""
-						|| AuthService::isReservedUserId($httpVars["user_id"])
-						|| $loggedUser->getId() == $httpVars["user_id"])
+					if(!isset($httpVars["user_id"]) || ($httpVars["user_id"] ?? "")==""
+						|| AuthService::isReservedUserId($httpVars["user_id"] ?? "")
+						|| $loggedUser->getId() == $httpVars["user_id"] ?? "")
 					{
 						XMLWriter::header();
 						XMLWriter::sendMessage(null, $mess["boaconf.61"]);
 						XMLWriter::close();
 					}
-					$res = AuthService::deleteUser($httpVars["user_id"]);
+					$res = AuthService::deleteUser($httpVars["user_id"] ?? "");
 					XMLWriter::header();
 					XMLWriter::sendMessage($mess["boaconf.60"], null);
 					XMLWriter::reloadDataNode();
@@ -1348,7 +1348,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 			break;			
 			
 			case "get_plugin_manifest" : 
-				$plugin = PluginsService::getInstance()->getPluginById($httpVars["plugin_id"]);
+				$plugin = PluginsService::getInstance()->getPluginById($httpVars["plugin_id"] ?? "");
 				XMLWriter::header("admin_data");
 
                 $fullManifest = $plugin->getManifestRawContent("", "xml");
@@ -1371,7 +1371,7 @@ class ConfAccessDriver extends AbstractAccessDriver
                         }
                         $tParams = XMLWriter::replaceXmlKeywords($typePlug->getManifestRawContent("server_settings/param[not(@group_switch_name)]"));
                         $addParams .= '<global_param group_switch_name="'.$fieldName.'" name="instance_name" group_switch_label="'.$typePlug->getManifestLabel().$checkErrorMessage.'" group_switch_value="'.$typePlug->getId().'" default="'.$typePlug->getId().'" type="hidden"/>';
-                        $addParams .= str_replace("<param", "<global_param group_switch_name=\"${fieldName}\" group_switch_label=\"".$typePlug->getManifestLabel().$checkErrorMessage."\" group_switch_value=\"".$typePlug->getId()."\" ", $tParams);
+                        $addParams .= str_replace("<param", "<global_param group_switch_name=\"{$fieldName}\" group_switch_label=\"".$typePlug->getManifestLabel().$checkErrorMessage."\" group_switch_value=\"".$typePlug->getId()."\" ", $tParams);
                         $addParams .= str_replace("<param", "<global_param", XMLWriter::replaceXmlKeywords($typePlug->getManifestRawContent("server_settings/param[@group_switch_name]")));
                         $addParams .= XMLWriter::replaceXmlKeywords($typePlug->getManifestRawContent("server_settings/global_param"));
                     }
@@ -1425,21 +1425,21 @@ class ConfAccessDriver extends AbstractAccessDriver
 
                 $options = array();
                 $this->parseParameters($httpVars, $options, null, true);
-                $pluginId = $httpVars["action_plugin_id"];
+                $pluginId = $httpVars["action_plugin_id"] ?? "";
                 if(isSet($httpVars["button_key"])){
-                    $options = $options[$httpVars["button_key"]];
+                    $options = $options[$httpVars["button_key"] ?? ""];
                 }
                 $plugin = PluginsService::getInstance()->softLoad($pluginId, $options);
-                if(method_exists($plugin, $httpVars["action_plugin_method"])){
+                if(method_exists($plugin, $httpVars["action_plugin_method"] ?? "")){
                     try{
-                        $res = call_user_func(array($plugin, $httpVars["action_plugin_method"]), $options);
+                        $res = call_user_func(array($plugin, $httpVars["action_plugin_method"] ?? ""), $options);
                     }catch (\Exception $e){
                         echo("ERROR:" . $e->getMessage());
                         break;
                     }
                     echo($res);
                 }else{
-                    echo 'ERROR: Plugin '.$httpVars["action_plugin_id"].' does not implement '.$httpVars["action_plugin_method"].' method!';
+                    echo 'ERROR: Plugin '.($httpVars["action_plugin_id"] ?? "").' does not implement '.($httpVars["action_plugin_method"] ?? "").' method!';
                 }
 
             break;
@@ -1449,7 +1449,7 @@ class ConfAccessDriver extends AbstractAccessDriver
 				$options = array();
 				$this->parseParameters($httpVars, $options, null, true);
                 $confStorage = ConfService::getConfStorageImpl();
-                $confStorage->savePluginConfig($httpVars["plugin_id"], $options);
+                $confStorage->savePluginConfig($httpVars["plugin_id"] ?? "", $options);
 				@unlink(APP_PLUGINS_CACHE_FILE);
 				@unlink(APP_PLUGINS_REQUIRES_FILE);				
 				@unlink(APP_PLUGINS_MESSAGES_FILE);

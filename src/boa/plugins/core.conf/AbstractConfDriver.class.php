@@ -499,28 +499,28 @@ abstract class AbstractConfDriver extends Plugin {
 
 				if(isSet($httpVars["bm_action"]) && isset($httpVars["bm_path"]))
 				{
-					if($httpVars["bm_action"] == "add_bookmark")
+					if(($httpVars["bm_action"] ?? "") == "add_bookmark")
 					{
 						$title = "";
-						if(isSet($httpVars["bm_title"])) $title = $httpVars["bm_title"];
-						if($title == "" && $httpVars["bm_path"]=="/") $title = ConfService::getCurrentRootDirDisplay();
-						$bmUser->addBookMark(SystemTextEncoding::magicDequote($httpVars["bm_path"]), SystemTextEncoding::magicDequote($title));
+						if(isSet($httpVars["bm_title"])) $title = $httpVars["bm_title"] ?? "";
+						if($title == "" && ($httpVars["bm_path"] ?? "")=="/") $title = ConfService::getCurrentRootDirDisplay();
+						$bmUser->addBookMark(SystemTextEncoding::magicDequote($httpVars["bm_path"] ?? ""), SystemTextEncoding::magicDequote($title));
                         if($driver){
-                            $node = new ManifestNode($driver->getResourceUrl(SystemTextEncoding::magicDequote($httpVars["bm_path"])));
+                            $node = new ManifestNode($driver->getResourceUrl(SystemTextEncoding::magicDequote($httpVars["bm_path"] ?? "")));
                             $node->setMetadata("bookmarked", array("bookmarked" => "true"), true, APP_METADATA_SCOPE_REPOSITORY, true);
                         }
 					}
-					else if($httpVars["bm_action"] == "delete_bookmark")
+					else if(($httpVars["bm_action"] ?? "") == "delete_bookmark")
 					{
-						$bmUser->removeBookmark($httpVars["bm_path"]);
+						$bmUser->removeBookmark($httpVars["bm_path"] ?? "");
                         if($driver){
-                            $node = new ManifestNode($driver->getResourceUrl(SystemTextEncoding::magicDequote($httpVars["bm_path"])));
+                            $node = new ManifestNode($driver->getResourceUrl(SystemTextEncoding::magicDequote($httpVars["bm_path"] ?? "")));
                             $node->removeMetadata("bookmarked", true, APP_METADATA_SCOPE_REPOSITORY, true);
                         }
                     }
-					else if($httpVars["bm_action"] == "rename_bookmark" && isset($httpVars["bm_title"]))
+					else if(($httpVars["bm_action"] ?? "") == "rename_bookmark" && isset($httpVars["bm_title"]))
 					{
-						$bmUser->renameBookmark($httpVars["bm_path"], $httpVars["bm_title"]);
+						$bmUser->renameBookmark($httpVars["bm_path"] ?? "", $httpVars["bm_title"] ?? "");
 					}
                     Controller::applyHook("msg.instant", array("<reload_bookmarks/>", ConfService::getRepository()->getId()));
 				}
@@ -629,20 +629,18 @@ abstract class AbstractConfDriver extends Plugin {
                 $digestSet = isSet($davData["HA1"]);
                 if(isSet($httpVars["activate"]) || isSet($httpVars["webdav_pass"])){
 					if(!empty($httpVars["activate"])){
-						$activate = ($httpVars["activate"]=="true" ? true:false);
+						$activate = (($httpVars["activate"] ?? "")=="true" ? true:false);
 						if(empty($davData)){
 							$davData = array();						
 						}
 						$davData["ACTIVE"] = $activate;
 					}
 					if(!empty($httpVars["webdav_pass"])){
-						$password = $httpVars["webdav_pass"];
-						if (function_exists('mcrypt_encrypt'))
+						$password = $httpVars["webdav_pass"] ?? "";
+						if (\BoA\Core\Security\Crypto::isAvailable())
 				        {
 				        	$user = $userObject->getId();
-				        	$secret = (defined("APP_SECRET_KEY")? APP_SAFE_SECRET_KEY:"\1CDAFx¨op#");
-					        $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND);
-					        $password = base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256,  md5($user.$secret), $password, MCRYPT_MODE_ECB, $iv));
+					        $password = \BoA\Core\Security\Crypto::encrypt($password, 'userpass:'.$user);
 				        }						
 						$davData["PASS"] = $password;
 					}
@@ -678,8 +676,8 @@ abstract class AbstractConfDriver extends Plugin {
 
 			case  "get_user_template_logo":
 
-                $tplId = $httpVars["template_id"];
-                $iconFormat = $httpVars["icon_format"];
+                $tplId = $httpVars["template_id"] ?? "";
+                $iconFormat = $httpVars["icon_format"] ?? "";
                 $repo = ConfService::getRepositoryById($tplId);
                 $logo = $repo->getOption("TPL_ICON_".strtoupper($iconFormat));
                 if(isSet($logo) && is_file(APP_DATA_PATH."/plugins/core.conf/tpl_logos/".$logo)){
@@ -742,12 +740,12 @@ abstract class AbstractConfDriver extends Plugin {
 
             case "user_create_repository" :
 
-                $tplId = $httpVars["template_id"];
+                $tplId = $httpVars["template_id"] ?? "";
                 $tplRepo = ConfService::getRepositoryById($tplId);
                 $options = array();
                 Utils::parseStandardFormParameters($httpVars, $options);
                 $loggedUser = AuthService::getLoggedUser();
-                $newRep = $tplRepo->createTemplateChild(Utils::sanitize($httpVars["DISPLAY"]), $options, null, $loggedUser->getId());
+                $newRep = $tplRepo->createTemplateChild(Utils::sanitize($httpVars["DISPLAY"] ?? ""), $options, null, $loggedUser->getId());
                 $gPath = $loggedUser->getGroupPath();
                 if(!empty($gPath)){
                     $newRep->setGroupPath($gPath);
@@ -774,7 +772,7 @@ abstract class AbstractConfDriver extends Plugin {
 
             case "user_delete_repository" :
 
-                $repoId = $httpVars["repository_id"];
+                $repoId = $httpVars["repository_id"] ?? "";
                 $repository = ConfService::getRepositoryById($repoId);
                 if(!$repository->getUniqueUser()||$repository->getUniqueUser()!=AuthService::getLoggedUser()->getId()){
                     throw new Exception("You are not allowed to perform this operation!");
@@ -807,7 +805,7 @@ abstract class AbstractConfDriver extends Plugin {
                     break;
                 }
                 $loggedUser = AuthService::getLoggedUser();
-                $crtValue = $httpVars["value"];
+                $crtValue = $httpVars["value"] ?? "";
                 if(!empty($crtValue)) $regexp = '^'.preg_quote($crtValue);
                 else $regexp = null;
                 $limit = min(ConfService::getCoreConf("USERS_LIST_COMPLETE_LIMIT", "conf"), 20);
@@ -852,31 +850,31 @@ abstract class AbstractConfDriver extends Plugin {
             case "get_binary_param" :
 
                 if(isSet($httpVars["tmp_file"])){
-                    $file = Utils::getAppTmpDir()."/".Utils::securePath($httpVars["tmp_file"]);
+                    $file = Utils::getAppTmpDir()."/".Utils::securePath($httpVars["tmp_file"] ?? "");
                     if(isSet($file)){
                         header("Content-Type:image/png");
                         readfile($file);
                     }
                 }else if(isSet($httpVars["binary_id"])){
                     if(isSet($httpVars["user_id"]) && AuthService::getLoggedUser() != null && AuthService::getLoggedUser()->isAdmin()){
-                        $context = array("USER" => $httpVars["user_id"]);
+                        $context = array("USER" => $httpVars["user_id"] ?? "");
                     }else{
                         $context = array("USER" => AuthService::getLoggedUser()->getId());
                     }
-                    $this->loadBinary($context, $httpVars["binary_id"]);
+                    $this->loadBinary($context, $httpVars["binary_id"] ?? "");
                 }
             break;
 
             case "get_global_binary_param" :
 
                 if(isSet($httpVars["tmp_file"])){
-                    $file = Utils::getAppTmpDir()."/".Utils::securePath($httpVars["tmp_file"]);
+                    $file = Utils::getAppTmpDir()."/".Utils::securePath($httpVars["tmp_file"] ?? "");
                     if(isSet($file)){
                         header("Content-Type:image/png");
                         readfile($file);
                     }
                 }else if(isSet($httpVars["binary_id"])){
-                    $this->loadBinary(array(), $httpVars["binary_id"]);
+                    $this->loadBinary(array(), $httpVars["binary_id"] ?? "");
                 }
             break;
 

@@ -107,12 +107,13 @@ class ShareCenter extends Plugin{
     function init($options){
         parent::init($options);
         $this->repository = ConfService::getRepository();
-        if(!is_a($this->repository->driverInstance, "BoA\Core\Access\FileWrapperProvider")){
+        if($this->repository == null || !is_object($this->repository->driverInstance) || !is_a($this->repository->driverInstance, "BoA\Core\Access\FileWrapperProvider")){
             return;
         }
         $this->accessDriver = $this->repository->driverInstance;
         $this->urlBase = $this->repository->driverInstance->getResourceUrl("/");
-        $this->baseProtocol = array_shift(explode("://", $this->urlBase));
+        $parts = explode("://", $this->urlBase);
+        $this->baseProtocol = array_shift($parts);
         if(array_key_exists("meta.watch", PluginsService::getInstance()->getActivePlugins())){
             $this->watcher = PluginsService::getInstance()->getPluginById("meta.watch");
         }
@@ -127,7 +128,7 @@ class ShareCenter extends Plugin{
 
         if($this->accessDriver->getId() == "access.demo"){
             $errorMessage = "This is a demo, all 'write' actions are disabled!";
-            if($httpVars["sub_action"] == "delegate_repo"){
+            if(($httpVars["sub_action"] ?? "") == "delegate_repo"){
                 return XMLWriter::sendMessage(null, $errorMessage, false);
             }else{
                 print($errorMessage);
@@ -142,8 +143,8 @@ class ShareCenter extends Plugin{
             // SHARING FILE OR FOLDER
             //------------------------------------
             case "share":
-            	$subAction = (isSet($httpVars["sub_action"])?$httpVars["sub_action"]:"");
-                $file = Utils::decodeSecureMagic($httpVars["file"]);
+            	$subAction = (isSet($httpVars["sub_action"])?$httpVars["sub_action"] ?? "":"");
+                $file = Utils::decodeSecureMagic($httpVars["file"] ?? "");
                 $node = new ManifestNode($this->urlBase.$file);
                 $metadata = null;
 
@@ -171,7 +172,7 @@ class ShareCenter extends Plugin{
                     if(!isSet($httpVars["downloadlimit"])){
                         $httpVars["downloadlimit"] = 0;
                     }
-	                $data = $this->accessDriver->makePublicletOptions($file, $httpVars["password"], $httpVars["expiration"], $httpVars["downloadlimit"], $this->repository);
+	                $data = $this->accessDriver->makePublicletOptions($file, $httpVars["password"] ?? "", $httpVars["expiration"] ?? "", $httpVars["downloadlimit"] ?? "", $this->repository);
                     $customData = array();
                     foreach($httpVars as $key => $value){
                         if(substr($key, 0, strlen("PLUGINS_DATA_")) == "PLUGINS_DATA_"){
@@ -203,8 +204,8 @@ class ShareCenter extends Plugin{
 
             case "toggle_link_watch":
 
-                $file = Utils::decodeSecureMagic($httpVars["file"]);
-                $watchValue = $httpVars["set_watch"] == "true" ? true : false;
+                $file = Utils::decodeSecureMagic($httpVars["file"] ?? "");
+                $watchValue = ($httpVars["set_watch"] ?? "") == "true" ? true : false;
                 $node = new ManifestNode($this->urlBase.$file);
                 $metadata = $node->retrieveMetadata(
                     "app_shared",
@@ -238,8 +239,8 @@ class ShareCenter extends Plugin{
 
             case "load_shared_element_data":
 
-                $file = Utils::decodeSecureMagic($httpVars["file"]);
-                $elementType = $httpVars["element_type"];
+                $file = Utils::decodeSecureMagic($httpVars["file"] ?? "");
+                $elementType = $httpVars["element_type"] ?? "";
                 $messages = ConfService::getMessages();
                 $node = new ManifestNode($this->urlBase.$file);
 
@@ -328,7 +329,7 @@ class ShareCenter extends Plugin{
             break;
 
             case "unshare":
-                $file = Utils::decodeSecureMagic($httpVars["file"]);
+                $file = Utils::decodeSecureMagic($httpVars["file"] ?? "");
                 $node = new ManifestNode($this->urlBase.$file);
                 $metadata = $node->retrieveMetadata(
                     "app_shared",
@@ -336,7 +337,7 @@ class ShareCenter extends Plugin{
                     APP_METADATA_SCOPE_REPOSITORY
                 );
                 if(count($metadata)){
-                    $eType = $httpVars["element_type"];
+                    $eType = $httpVars["element_type"] ?? "";
                     if(isSet($metadata["minisite"])) $eType = "minisite";
                     self::deleteSharedElement($eType, $metadata["element"], AuthService::getLoggedUser());
                     $node->removeMetadata("app_shared", true, APP_METADATA_SCOPE_REPOSITORY, true);
@@ -346,7 +347,7 @@ class ShareCenter extends Plugin{
                 break;
 
             case "reset_counter":
-                $file = Utils::decodeSecureMagic($httpVars["file"]);
+                $file = Utils::decodeSecureMagic($httpVars["file"] ?? "");
                 $node = new ManifestNode($this->urlBase.$file);
                 $metadata = $node->retrieveMetadata(
                     "app_shared",
@@ -441,8 +442,8 @@ class ShareCenter extends Plugin{
     	if(!is_dir($downloadFolder)){
     		return "ERROR : Public URL folder does not exist!";
     	}
-    	if(!function_exists("mcrypt_create_iv")){
-    		return "ERROR : MCrypt must be installed to use publiclets!";
+    	if(!\BoA\Core\Security\Crypto::isAvailable()){
+    		return "ERROR : OpenSSL AES-256-GCM must be available to use publiclets!";
     	}
         $this->initPublicFolder($downloadFolder);
         $data["PLUGIN_ID"] = $accessDriver->getId();
@@ -470,15 +471,14 @@ class ShareCenter extends Plugin{
         // Hash the data to make sure it wasn't modified
         $hash = $this->computeHash($outputData, $downloadFolder); // md5($outputData);
 
-        $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND);
-        $outputData = base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256, $hash, $outputData, MCRYPT_MODE_ECB, $iv));
+        $cyphered = \BoA\Core\Security\Crypto::encrypt($outputData, 'publiclet:'.$hash);
         $fileData = "<"."?"."php \n".
         '   require_once("'.str_replace("\\", "/", APP_INSTALL_PATH).'/publicLet.inc.php"); '."\n".
-        '   $id = str_replace(".php", "", basename(__FILE__)); '."\n". // Not using "" as php would replace $ inside
-        '   $cypheredData = base64_decode("'.$outputData.'"); '."\n".
-        '   $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND); '."\n".
-        '   $inputData = trim(mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $id, $cypheredData, MCRYPT_MODE_ECB, $iv), "\0");  '."\n".
-        '   if (!ShareCenter::checkHash($inputData, $id)) { header("HTTP/1.0 401 Not allowed, script was modified"); exit(); } '."\n".
+        '   $id = str_replace(".php", "", basename(__FILE__)); '."\n".
+        '   $cypheredData = "'.str_replace(array('\\', '"'), array('\\\\', '\\"'), $cyphered).'"; '."\n".
+        '   $__boaCtx = "publiclet:".$id; '."\n".
+        '   $inputData = \BoA\Core\Security\Crypto::decrypt($cypheredData, $__boaCtx); '."\n".
+        '   if ($inputData === false || !ShareCenter::checkHash($inputData, $id)) { header("HTTP/1.0 401 Not allowed, script was modified"); exit(); } '."\n".
         '   // Ok extract the data '."\n".
         '   $data = unserialize($inputData); ShareCenter::loadPubliclet($data); ';
         if (@file_put_contents($downloadFolder."/".$hash.".php", $fileData) === FALSE){
@@ -637,8 +637,9 @@ class ShareCenter extends Plugin{
         // create driver from $data
         $className = $data["DRIVER"]."AccessDriver";
         $hash = md5(serialize($data));
-        $u = parse_url($_SERVER["REQUEST_URI"]);
-        $shortHash = pathinfo(basename($u["path"]), PATHINFO_FILENAME);
+        $u = parse_url($_SERVER["REQUEST_URI"] ?? "");
+        $path = is_array($u) ? ($u["path"] ?? "") : "";
+        $shortHash = pathinfo(basename($path), PATHINFO_FILENAME);
 
         if ( ($data["EXPIRE_TIME"] && time() > $data["EXPIRE_TIME"]) || 
             ($data["DOWNLOAD_LIMIT"] && $data["DOWNLOAD_LIMIT"]> 0 && $data["DOWNLOAD_LIMIT"] <= PublicletCounter::getCount($shortHash)) )
@@ -860,10 +861,10 @@ class ShareCenter extends Plugin{
             $httpVars["right_write_0"] = (isSet($httpVars["simple_right_write"]) ? "true" : "false");
             $httpVars["right_watch_0"] = "false";
             $httpVars["disable_download"] = (isSet($httpVars["simple_right_download"]) ? false : true);
-            if($httpVars["right_write_0"] == "false" && $httpVars["right_read_0"] == "false"){
+            if(($httpVars["right_write_0"] ?? "") == "false" && ($httpVars["right_read_0"] ?? "") == "false"){
                 return "share_center.58";
             }
-            if($httpVars["right_read_0"] == "false" && !$httpVars["disable_download"]){
+            if(($httpVars["right_read_0"] ?? "") == "false" && !$httpVars["disable_download"] ?? ""){
                 $httpVars["right_read_0"] = "true";
             }
             $uniqueUser = $userId;
@@ -878,7 +879,7 @@ class ShareCenter extends Plugin{
         $downloadFolder = ConfService::getCoreConf("PUBLIC_DOWNLOAD_FOLDER");
         $this->initPublicFolder($downloadFolder);
         $data = array("REPOSITORY"=>$newId, "PRELOG_USER"=>$userId);
-        if($httpVars["disable_download"]){
+        if($httpVars["disable_download"] ?? ""){
             $data["DOWNLOAD_DISABLED"] = true;
         }
         $data["TRAVEL_PATH_TO_ROOT"] = $this->computeMinisiteToServerURL();
@@ -886,15 +887,14 @@ class ShareCenter extends Plugin{
         $outputData = serialize($data);
         $hash = self::computeHash($outputData, $downloadFolder);
 
-        $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND);
-        $outputData = base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256, $hash, $outputData, MCRYPT_MODE_ECB, $iv));
+        $cyphered = \BoA\Core\Security\Crypto::encrypt($outputData, 'publiclet:'.$hash);
         $fileData = "<"."?"."php \n".
         '   require_once("'.str_replace("\\", "/", APP_INSTALL_PATH).'/publicLet.inc.php"); '."\n".
-        '   $id = str_replace(".php", "", basename(__FILE__)); '."\n". // Not using "" as php would replace $ inside
-        '   $cypheredData = base64_decode("'.$outputData.'"); '."\n".
-        '   $iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND); '."\n".
-        '   $inputData = trim(mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $id, $cypheredData, MCRYPT_MODE_ECB, $iv), "\0");  '."\n".
-        '   if (!ShareCenter::checkHash($inputData, $id)) { header("HTTP/1.0 401 Not allowed, script was modified"); exit(); } '."\n".
+        '   $id = str_replace(".php", "", basename(__FILE__)); '."\n".
+        '   $cypheredData = "'.str_replace(array('\\', '"'), array('\\\\', '\\"'), $cyphered).'"; '."\n".
+        '   $__boaCtx = "publiclet:".$id; '."\n".
+        '   $inputData = \BoA\Core\Security\Crypto::decrypt($cypheredData, $__boaCtx); '."\n".
+        '   if ($inputData === false || !ShareCenter::checkHash($inputData, $id)) { header("HTTP/1.0 401 Not allowed, script was modified"); exit(); } '."\n".
         '   // Ok extract the data '."\n".
         '   $data = unserialize($inputData); ShareCenter::loadMinisite($data); ';
         if (@file_put_contents($downloadFolder."/".$hash.".php", $fileData) === FALSE){
@@ -923,7 +923,7 @@ class ShareCenter extends Plugin{
 		// SUCCESS
 		// 200
 
-		if(!isSet($httpVars["repo_label"]) || $httpVars["repo_label"] == ""){
+		if(!isSet($httpVars["repo_label"]) || ($httpVars["repo_label"] ?? "") == ""){
 			return 100;
 		}
 		$loggedUser = AuthService::getLoggedUser();
@@ -969,10 +969,10 @@ class ShareCenter extends Plugin{
             $index ++;
         }
 
-		$label = Utils::decodeSecureMagic($httpVars["repo_label"]);
-		$description = Utils::decodeSecureMagic($httpVars["repo_description"]);
+		$label = Utils::decodeSecureMagic($httpVars["repo_label"] ?? "");
+		$description = Utils::decodeSecureMagic($httpVars["repo_description"] ?? "");
         if(isSet($httpVars["repository_id"])){
-            $editingRepo = ConfService::getRepositoryById($httpVars["repository_id"]);
+            $editingRepo = ConfService::getRepositoryById($httpVars["repository_id"] ?? "");
         }
 
 		// CHECK USER & REPO DOES NOT ALREADY EXISTS
@@ -997,7 +997,7 @@ class ShareCenter extends Plugin{
                 if(AuthService::isReservedUserId($userName)){
                     return 102;
                 }
-                if(!isSet($httpVars["shared_pass"]) || $httpVars["shared_pass"] == "") return 100;
+                if(!isSet($httpVars["shared_pass"]) || ($httpVars["shared_pass"] ?? "") == "") return 100;
             }
         }
 
@@ -1016,7 +1016,7 @@ class ShareCenter extends Plugin{
             $newRepo = $editingRepo;
             if($editingRepo->getDisplay() != $label){
                 $newRepo->setDisplay($label);
-                ConfService::replaceRepository($httpVars["repository_id"], $newRepo);
+                ConfService::replaceRepository($httpVars["repository_id"] ?? "", $newRepo);
             }
             $editingRepo->setDescription($description);
         }else{
@@ -1043,11 +1043,11 @@ class ShareCenter extends Plugin{
             ConfService::addRepository($newRepo);
         }
 
-        $file = Utils::decodeSecureMagic($httpVars["file"]);
+        $file = Utils::decodeSecureMagic($httpVars["file"] ?? "");
 
         if(isSet($editingRepo)){
 
-            $currentRights = $this->computeSharedRepositoryAccessRights($httpVars["repository_id"], false, $this->urlBase.$file);
+            $currentRights = $this->computeSharedRepositoryAccessRights($httpVars["repository_id"] ?? "", false, $this->urlBase.$file);
             $originalUsers = array_keys($currentRights["USERS"]);
             $removeUsers = array_diff($originalUsers, $users);
             if(count($removeUsers)){
@@ -1077,11 +1077,8 @@ class ShareCenter extends Plugin{
                 // check that it's a child user
                 $userObject = $confDriver->createUserObject($userName);
             }else{
-                if(ConfService::getAuthDriverImpl()->getOption("TRANSMIT_CLEAR_PASS")){
-                    $pass = $uPasses[$userName];
-                }else{
-                    $pass = md5($uPasses[$userName]);
-                }
+                // Always pass clear password; auth driver stores password_hash.
+                $pass = $uPasses[$userName];
                 AuthService::createUser($userName, $pass);
                 $userObject = $confDriver->createUserObject($userName);
                 $userObject->personalRole->clearAcls();
@@ -1096,7 +1093,7 @@ class ShareCenter extends Plugin{
                 $newRole = new Role("APP_SHARED-".$newRepo->getUniqueId());
                 $r = AuthService::getRole("MINISITE");
                 if(is_a($r, "BoA\Core\Security\Role")){
-                    if($httpVars["disable_download"]){
+                    if($httpVars["disable_download"] ?? ""){
                         $f = AuthService::getRole("MINISITE_NODOWNLOAD");
                         if(is_a($f, "BoA\Core\Security\Role")){
                             $r = $f->override($r);
@@ -1133,7 +1130,7 @@ class ShareCenter extends Plugin{
 
         if($this->watcher !== false){
             // Register a watch on the new repository root for current user
-            if($httpVars["self_watch_folder"] == "true"){
+            if(($httpVars["self_watch_folder"] ?? "") == "true"){
                 $this->watcher->setWatchOnFolder(
                     new ManifestNode($this->baseProtocol."://".$newRepo->getUniqueId()."/"),
                     AuthService::getLoggedUser()->getId(),
@@ -1230,10 +1227,22 @@ class ShareCenter extends Plugin{
         if(!is_file($file)) return array();
         $lines = file($file);
         $inputData = '';
-        $code = $lines[3] . $lines[4] . $lines[5];
-        eval($code);
-        $dataModified = self::checkHash($inputData, $id); //(md5($inputData) != $id);
+        // Crypto publiclets store: $cypheredData = "v1:...";
+        if (isset($lines[3]) && preg_match('/\$cypheredData\s*=\s*"((?:\\\\.|[^"\\\\])*)"/', $lines[3], $m)) {
+            $payload = stripcslashes($m[1]);
+            if (\BoA\Core\Security\Crypto::isV1Payload($payload)) {
+                $decrypted = \BoA\Core\Security\Crypto::decrypt($payload, 'publiclet:'.$id);
+                $inputData = ($decrypted === false) ? '' : $decrypted;
+            }
+        }
+        if ($inputData === '') {
+            return array("SECURITY_MODIFIED" => true, "PUBLICLET_PATH" => $file);
+        }
+        $dataModified = self::checkHash($inputData, $id);
         $publicletData = unserialize($inputData);
+        if (!is_array($publicletData)) {
+            return array("SECURITY_MODIFIED" => true, "PUBLICLET_PATH" => $file);
+        }
         $publicletData["SECURITY_MODIFIED"] = $dataModified;
         if(!isSet($publicletData["REPOSITORY"])){
             $publicletData["DOWNLOAD_COUNT"] = PublicletCounter::getCount($id);

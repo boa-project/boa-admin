@@ -148,9 +148,16 @@ class AuthService
      */
     static function getBruteForceLoginArray()
     {
-        $failedLog = Utils::getAppTmpDir().$logName;
+        $failedLog = Utils::getAppTmpDir().self::$logName;
+        // File is created on first failed-login write; missing is normal on a fresh install.
+        if(!is_file($failedLog)){
+            return array();
+        }
         $loginAttempt = @file_get_contents($failedLog);
-        $loginArray = unserialize($loginAttempt);
+        if($loginAttempt === false || $loginAttempt === ''){
+            return array();
+        }
+        $loginArray = @unserialize($loginAttempt);
         $ret = array();
         $curTime = time();
         if (is_array($loginArray)){
@@ -170,7 +177,11 @@ class AuthService
      */
     static function setBruteForceLoginArray($loginArray)
     {
-        $failedLog = Utils::getAppTmpDir().$logName;
+        $tmpDir = Utils::getAppTmpDir();
+        if(!is_dir($tmpDir)){
+            @mkdir($tmpDir, 0755, true);
+        }
+        $failedLog = $tmpDir.self::$logName;
         @file_put_contents($failedLog, serialize($loginArray));
     }
     /**
@@ -184,7 +195,7 @@ class AuthService
         if(isSet($_SERVER['REMOTE_ADDR'])){
             $serverAddress = $_SERVER['REMOTE_ADDR'];
         }else{
-            $serverAddress = $_SERVER['SERVER_ADDR'];
+            $serverAddress = $_SERVER['SERVER_ADDR'] ?? '';
         }
         $login = null;
         if(isSet($loginArray[$serverAddress])){
@@ -230,7 +241,7 @@ class AuthService
      * @param AbstractUser $user
      */
     static function refreshRememberCookie($user){
-        $current = $_COOKIE[self::REMEMBER_COOKIE_NAME];
+        $current = $_COOKIE[self::REMEMBER_COOKIE_NAME] ?? '';
         if(!empty($current)){
             $user->invalidateCookieString(substr($current, strpos($current, ":")+1));
         }
@@ -251,7 +262,7 @@ class AuthService
      * Warning, must be called before sending other headers!
      */
     static function clearRememberCookie(){
-        $current = $_COOKIE[self::REMEMBER_COOKIE_NAME];
+        $current = $_COOKIE[self::REMEMBER_COOKIE_NAME] ?? '';
         $user = AuthService::getLoggedUser();
         if(!empty($current) && $user != null){
             $user->invalidateCookieString(substr($current, strpos($current, ":")+1));
@@ -351,7 +362,7 @@ class AuthService
             }
         }
         // Successful login attempt
-        unset($loginAttempt[$_SERVER["REMOTE_ADDR"]]);
+        unset($loginAttempt[$_SERVER["REMOTE_ADDR"] ?? '']);
         AuthService::setBruteForceLoginArray($loginAttempt);
 
         // Setting session credentials if asked in config
@@ -495,11 +506,8 @@ class AuthService
         }
         $adminCount = AuthService::countAdminUsers();
         if($adminCount == 0){
-            $authDriver = ConfService::getAuthDriverImpl();
+            // Always store password_hash of the clear install password.
             $adminPass = ADMIN_PASSWORD;
-            if($authDriver->getOption("TRANSMIT_CLEAR_PASS") !== true){
-                $adminPass = md5(ADMIN_PASSWORD);
-            }
              AuthService::createUser("admin", $adminPass, true);
              if(ADMIN_PASSWORD == INITIAL_ADMIN_PASSWORD)
              {
@@ -665,13 +673,171 @@ class AuthService
     }
 
     /**
-     * Simple password encoding, should be deported in a more complex/configurable function
+     * Password hashing via password_hash (PASSWORD_DEFAULT).
+     * Legacy MD5 strings are not produced and cannot be verified.
      * @static
      * @param $pass
      * @return string
      */
     static function encodePassword($pass){
-        return md5($pass);
+        return password_hash($pass, PASSWORD_DEFAULT);
+    }
+
+    /**
+     * Verify a clear password against a stored hash.
+     * Rejects legacy MD5 (32 hex) and other non-password_hash values.
+     * @static
+     * @param string $pass Clear password
+     * @param string $stored Stored hash
+     * @return bool
+     */
+    static function verifyPassword($pass, $stored){
+        if (!is_string($stored) || $stored === '') {
+            return false;
+        }
+        // Invalidate legacy MD5 login hashes after OpenSSL cutover.
+        if (preg_match('/^[a-f0-9]{32}$/i', $stored)) {
+            return false;
+        }
+        if (!preg_match('/^\$2[ayb]\$|\$argon2/i', $stored)) {
+            return false;
+        }
+        return password_verify($pass, $stored);
+    }
+
+    /**
+     * Resolve a user id from login or email address.
+     * @static
+     * @param string $loginOrEmail
+     * @return string|null
+     */
+    static function resolveUserIdByLoginOrEmail($loginOrEmail){
+        $loginOrEmail = trim($loginOrEmail);
+        if ($loginOrEmail === '') {
+            return null;
+        }
+        $authDriver = ConfService::getAuthDriverImpl();
+        $candidate = AuthService::filterUserSensitivity($loginOrEmail);
+        if ($authDriver->userExists($candidate)) {
+            return $candidate;
+        }
+        if (strpos($loginOrEmail, '@') === false || !method_exists($authDriver, 'listUsers')) {
+            return null;
+        }
+        $conf = ConfService::getConfStorageImpl();
+        $users = $authDriver->listUsers('/');
+        if (!is_array($users)) {
+            return null;
+        }
+        $needle = strtolower($loginOrEmail);
+        foreach (array_keys($users) as $userId) {
+            try {
+                $u = $conf->createUserObject($userId);
+            } catch (\Exception $e) {
+                continue;
+            }
+            $email = '';
+            if (isSet($u->personalRole) && method_exists($u->personalRole, 'filterParameterValue')) {
+                $email = $u->personalRole->filterParameterValue('core.conf', 'email', APP_REPO_SCOPE_ALL, '');
+            }
+            if ($email !== '' && strtolower($email) === $needle) {
+                return $userId;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Create a reset token, store hashed form, email the opaque token link when possible.
+     * Always returns true-ish success to avoid user enumeration (except internal errors).
+     * @static
+     * @param string $loginOrEmail
+     * @return array{ok:bool,message:string,emailed?:bool}
+     */
+    static function requestPasswordReset($loginOrEmail){
+        $userId = AuthService::resolveUserIdByLoginOrEmail($loginOrEmail);
+        // Uniform response for unknown users.
+        $generic = array('ok' => true, 'message' => 'If that account exists, a reset email was sent.');
+        if ($userId === null || AuthService::isReservedUserId($userId)) {
+            return $generic;
+        }
+        if (!AuthService::changePasswordEnabled()) {
+            return array('ok' => false, 'message' => 'Password changes are disabled.');
+        }
+        $conf = ConfService::getConfStorageImpl();
+        $userObject = $conf->createUserObject($userId);
+        $token = \BoA\Core\Security\PasswordReset::generateToken();
+        $payload = \BoA\Core\Security\PasswordReset::createStoredPayload($token);
+        $userObject->saveTemporaryData(\BoA\Core\Security\PasswordReset::TEMP_KEY, $payload);
+        if (AuthService::changePasswordEnabled()) {
+            $userObject->setLock('pass_change');
+            $userObject->save('superuser');
+        }
+
+        $email = '';
+        if (isSet($userObject->personalRole) && method_exists($userObject->personalRole, 'filterParameterValue')) {
+            $email = $userObject->personalRole->filterParameterValue('core.conf', 'email', APP_REPO_SCOPE_ALL, '');
+        }
+        if ($email === '') {
+            return array(
+                'ok' => true,
+                'message' => 'Account has no email; contact an administrator.',
+                'emailed' => false
+            );
+        }
+
+        $base = Utils::detectServerURL(true);
+        $resetUrl = rtrim($base, '/') . '/' . APP_SERVER_ACCESS .
+            '?get_action=reset_password_form&user=' . rawurlencode($userId) .
+            '&token=' . rawurlencode($token);
+        $title = ConfService::getCoreConf('APPLICATION_TITLE');
+        if (empty($title)) {
+            $title = 'BoA';
+        }
+        $body = "A password reset was requested for your {$title} account ({$userId}).\n\n" .
+            "Open this link to choose a new password (expires in " .
+            \BoA\Core\Security\PasswordReset::TOKEN_TTL . " seconds):\n\n{$resetUrl}\n\n" .
+            "If you did not request this, you can ignore this message.\n";
+        $from = ConfService::getCoreConf('FROM', 'mailer');
+        if (empty($from)) {
+            $from = \BoA\Core\Utils\SmtpMailer::defaultFrom();
+        }
+        $sent = \BoA\Core\Utils\SmtpMailer::send($email, "{$title} password reset", $body, $from);
+        Logger::logAction('Password Reset Request', array('user_id' => $userId, 'emailed' => $sent));
+        return array('ok' => true, 'message' => $generic['message'], 'emailed' => $sent);
+    }
+
+    /**
+     * Consume a reset token and set a new password_hash; clears pass_change lock.
+     * @static
+     * @param string $userId
+     * @param string $token
+     * @param string $newPass
+     * @return array{ok:bool,message:string}
+     */
+    static function completePasswordReset($userId, $token, $newPass){
+        $userId = AuthService::filterUserSensitivity($userId);
+        if (!AuthService::userExists($userId) || AuthService::isReservedUserId($userId)) {
+            return array('ok' => false, 'message' => 'Invalid reset token.');
+        }
+        if (strlen($newPass) < ConfService::getCoreConf('PASSWORD_MINLENGTH', 'auth')) {
+            $messages = ConfService::getMessages();
+            return array('ok' => false, 'message' => isSet($messages[378]) ? $messages[378] : 'Password too short.');
+        }
+        $conf = ConfService::getConfStorageImpl();
+        $userObject = $conf->createUserObject($userId);
+        $stored = $userObject->getTemporaryData(\BoA\Core\Security\PasswordReset::TEMP_KEY);
+        if (!\BoA\Core\Security\PasswordReset::validateToken($token, $stored)) {
+            return array('ok' => false, 'message' => 'Invalid or expired reset token.');
+        }
+        AuthService::updatePassword($userId, $newPass);
+        $userObject->saveTemporaryData(\BoA\Core\Security\PasswordReset::TEMP_KEY, array());
+        if ($userObject->getLock() == 'pass_change') {
+            $userObject->removeLock();
+            $userObject->save('superuser');
+        }
+        Logger::logAction('Password Reset Complete', array('user_id' => $userId));
+        return array('ok' => true, 'message' => 'Password updated. You can log in.');
     }
     /**
      * Check a password

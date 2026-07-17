@@ -121,11 +121,11 @@ class SerialAuthDriver extends AbstractAuthDriver {
         if(AuthService::ignoreUserCase()) $login = strtolower($login);
 		$userStoredPass = $this->getUserPass($login);
 		if(!$userStoredPass) return false;
-		if($seed == "-1"){ // Seed = -1 means that password is not encoded.
-			return ($userStoredPass == md5($pass));
-		}else{
-			return (md5($userStoredPass.$seed) == $pass);
+		// password_hash requires the clear password (TRANSMIT_CLEAR_PASS / seed -1).
+		if($seed != "-1" && $seed != -1){
+			return false;
 		}
+		return AuthService::verifyPassword($pass, $userStoredPass);
 	}
 	
 	function usersEditable(){
@@ -134,28 +134,29 @@ class SerialAuthDriver extends AbstractAuthDriver {
 	function passwordsEditable(){
 		return true;
 	}
+
+	/**
+	 * Local serial auth always needs clear passwords for password_hash.
+	 * @param bool $new
+	 * @return int|string
+	 */
+	function getSeed($new=true){
+		return -1;
+	}
 	
 	function createUser($login, $passwd){
         if(AuthService::ignoreUserCase()) $login = strtolower($login);
 		$users = $this->_listAllUsers();
 		if(!is_array($users)) $users = array();
 		if(array_key_exists($login, $users)) return "exists";
-		if($this->getOption("TRANSMIT_CLEAR_PASS") === true){
-			$users[$login] = md5($passwd);
-		}else{
-			$users[$login] = $passwd;
-		}
+		$users[$login] = AuthService::encodePassword($passwd);
 		Utils::saveSerialFile($this->usersSerFile, $users);		
 	}	
 	function changePassword($login, $newPass){
         if(AuthService::ignoreUserCase()) $login = strtolower($login);
 		$users = $this->_listAllUsers();
 		if(!is_array($users) || !array_key_exists($login, $users)) return ;
-		if($this->getOption("TRANSMIT_CLEAR_PASS") === true){
-			$users[$login] = md5($newPass);
-		}else{
-			$users[$login] = $newPass;
-		}
+		$users[$login] = AuthService::encodePassword($newPass);
 		Utils::saveSerialFile($this->usersSerFile, $users);
 	}	
 	function deleteUser($login){

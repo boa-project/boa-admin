@@ -70,12 +70,17 @@ class DcoExplorer{
         $options = array();
         $driver = $this->_driver;        
         $options["options"] = $this->parseLsOptions((isSet($httpVars["options"])?$httpVars["options"]:"a"));
-        $startTime = microtime();
+        $startTime = microtime(true);
         if(isSet($httpVars["file"])){
             $options["file"] = Utils::decodeSecureMagic($httpVars["file"]);
         }
         $dir = Utils::securePath(SystemTextEncoding::magicDequote($dir));
-        $path = $driver->urlBase.($dir!= ""?($dir[0]=="/"?"":"/").$dir:"");
+        $path = $driver->urlBase;
+        if($dir != ""){
+            $path .= ($dir[0]=="/"?"":"/").$dir;
+        }else{
+            $path .= "/";
+        }
         $nonPatchedPath = $path;
         if($driver->wrapperClassName == $driver->DEFAULT_ACCESSWRAPPER_CLASSNAME){
             $nonPatchedPath = DcoAccessWrapper::unPatchPathForBaseDir($path);
@@ -91,7 +96,7 @@ class DcoExplorer{
         else{
             $this->readObjectContent($options, $page);
         }
-        Logger::debug("LS Time : ".intval((microtime()-$startTime)*1000)."ms");
+        Logger::debug("LS Time : ".intval((microtime(true)-$startTime)*1000)."ms");
     }
 
     private function readRootPath($options, $page){
@@ -204,6 +209,7 @@ class DcoExplorer{
         $dir = $options["dir"];
 
         $lsOptions = $options["options"];
+        $uniqueFile = null;
         if (array_key_exists("file", $options)){
             $uniqueFile = $options["file"];    
         }    
@@ -353,7 +359,7 @@ class DcoExplorer{
             foreach($fullList["d"] as $nodeDir){
                 $this->switchAction("ls", array(
                     "dir" => SystemTextEncoding::toUTF8($nodeDir->getPath()),
-                    "options"=> $httpVars["options"],
+                    "options"=> $httpVars["options"] ?? "a",
                     "recursive" => "true"
                 ), array());
             }
@@ -374,7 +380,7 @@ class DcoExplorer{
             }
         }
 
-        Logger::debug("LS Time : ".intval((microtime()-$startTime)*1000)."ms");
+        Logger::debug("LS Time : ".intval((microtime(true)-$startTime)*1000)."ms");
 
         XMLWriter::close();
     }

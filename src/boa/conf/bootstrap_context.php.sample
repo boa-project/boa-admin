@@ -69,6 +69,11 @@ define("SOFTWARE_UPDATE_SITE", "https://github.com/boa-project");
 // The admin password is created and his password is changed,
 // this config has no more impact.
 define("ADMIN_PASSWORD", "admin");
+// Application secret for OpenSSL Crypto (override via env APP_SECRET_KEY in Docker).
+if (!defined('APP_SECRET_KEY')) {
+	$__boaSecret = getenv('APP_SECRET_KEY');
+	define('APP_SECRET_KEY', ($__boaSecret !== false && $__boaSecret !== '') ? $__boaSecret : 'change-me-boa-dev-secret-key');
+}
 // For a specific distribution, you can specify where the
 // log files will be stored. This should be detected by log.* plugins
 // and used if defined. See bootstrap_plugins.php default configs for

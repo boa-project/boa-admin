@@ -35,6 +35,7 @@ use BoA\Core\Access\UserSelection;
 use BoA\Core\Security\ApplicationException;
 use BoA\Core\Services\ConfService;
 use BoA\Core\Utils\Utils;
+use BoA\Core\Utils\ZipHelper;
 use BoA\Plugins\Core\Log\Logger;
 
 defined('APP_EXEC') or die( 'Access not allowed');
@@ -82,15 +83,16 @@ class DcoAccessWrapper implements FileWrapper {
     protected static function initPath($path, $streamType, $storeOpenContext = false, $skipZip = false){
         $path = self::unPatchPathForBaseDir($path);
         $url = parse_url($path);
-        $repoId = $url["host"];
-        $test = trim($url["path"], "/");
+        $repoId = $url["host"] ?? "";
+        $urlPath = $url["path"] ?? "";
+        $test = trim($urlPath, "/");
         $atRoot = empty($test);
         if(isSet($url["fragment"]) && strlen($url["fragment"]) > 0){
-            $url["path"] .= "#".$url["fragment"];
+            $urlPath .= "#".$url["fragment"];
         }
         $repoObject = ConfService::getRepositoryById($repoId);
         if(!isSet($repoObject)) throw new \Exception("Cannot find repository with id ".$repoId);
-        $split = UserSelection::detectZip($url["path"]);
+        $split = UserSelection::detectZip($urlPath);
         $insideZip = false;
         if($split && $streamType == "file" && $split[1] != "/") $insideZip = true;
         if($split && $streamType == "dir") $insideZip = true;
@@ -101,7 +103,6 @@ class DcoAccessWrapper implements FileWrapper {
         if($insideZip){
             $zipPath = $split[0];
             $localPath = $split[1];
-            require_once(APP_VENDOR_FOLDER."/pclzip/pclzip.lib.php");
             //print($streamType.$path);
             if($streamType == "file"){
                 if(self::$crtZip == null ||  !is_array(self::$currentListingKeys)){
@@ -110,8 +111,8 @@ class DcoAccessWrapper implements FileWrapper {
                     $tmpFileName = $tmpDir.DIRECTORY_SEPARATOR.basename($localPath);
                     Logger::debug("Tmp file $tmpFileName");
                     register_shutdown_function(array(__NAMESPACE__."\DcoAccessWrapper", "removeTmpFile"), $tmpDir, $tmpFileName);
-                    $crtZip = new \PclZip(Utils::securePath(realpath($repoObject->getOption("PATH")).$repoObject->resolveVirtualRoots($zipPath)));
-                    $content = $crtZip->listContent();
+                    $zipFile = Utils::securePath(realpath($repoObject->getOption("PATH")).$repoObject->resolveVirtualRoots($zipPath));
+                    $content = ZipHelper::listContent($zipFile);
                     foreach ($content as $item){
                         $fName = Utils::securePath($item["stored_filename"]);
                         if($fName == $localPath || "/".$fName == $localPath){
@@ -119,9 +120,9 @@ class DcoAccessWrapper implements FileWrapper {
                             break;
                         }
                     }
-                    $res = $crtZip->extract(PCLZIP_OPT_BY_NAME, $localPath, PCLZIP_OPT_PATH, $tmpDir, PCLZIP_OPT_REMOVE_ALL_PATH);
+                    $res = ZipHelper::extractByName($zipFile, $localPath, $tmpDir, true);
                     Logger::debug("Extracted ".$path." to ".dirname($localPath));
-                    if($storeOpenContext) self::$crtZip = $crtZip;
+                    if($storeOpenContext) self::$crtZip = $zipFile;
                     return $tmpFileName;
                 }else{
                     $key = basename($localPath);
@@ -133,9 +134,9 @@ class DcoAccessWrapper implements FileWrapper {
                     }
                 }
             }else{
-                $crtZip = new \PclZip(Utils::securePath(realpath($repoObject->getOption("PATH")).$repoObject->resolveVirtualRoots($zipPath)));
-                $liste = $crtZip->listContent();
-                if($storeOpenContext) self::$crtZip = $crtZip;
+                $zipFile = Utils::securePath(realpath($repoObject->getOption("PATH")).$repoObject->resolveVirtualRoots($zipPath));
+                $liste = ZipHelper::listContent($zipFile);
+                if($storeOpenContext) self::$crtZip = $zipFile;
                 $folders = array(); $files = array();$builtFolders = array();
                 if($localPath[strlen($localPath)-1] != "/") $localPath.="/";
                 foreach ($liste as $item){
@@ -195,7 +196,7 @@ class DcoAccessWrapper implements FileWrapper {
                     return -1;
                 }
             }
-            return realpath($repoObject->getOption("PATH")).$repoObject->resolveVirtualRoots($url["path"]);
+            return realpath($repoObject->getOption("PATH")).$repoObject->resolveVirtualRoots($urlPath);
         }
     }
 
@@ -281,7 +282,8 @@ class DcoAccessWrapper implements FileWrapper {
             $this->fp = -1;
             return true;
         }else{
-            $this->fp = fopen($this->realPath, $mode, $options);
+            // Silence missing-file warnings (e.g. optional .metadata); callers handle false.
+            $this->fp = @fopen($this->realPath, $mode, $options);
             return ($this->fp !== false);
         }
     }
@@ -327,15 +329,21 @@ class DcoAccessWrapper implements FileWrapper {
                 }
             }
         }
-        if($fp = @fopen($path, "r")){
-            $stat = fstat($fp);
-            fclose($fp);
-            return $stat;
+        // Resolve to a real path and stat without fopen — missing optional
+        // files (e.g. .metadata) must not raise warnings under PHP 8.
+        try{
+            $realFile = Utils::securePath(self::initPath($path, "file"));
+        }catch(\Exception $e){
+            $realFile = -1;
+        }
+        if($realFile != -1 && is_file($realFile)){
+            self::$lastRealSize = false;
+            return @stat($realFile);
         }
         // Folder case
         $real = $this->initPath($path, "dir", false, true);
         if($real!=-1 && is_dir($real)){
-            return stat($real);
+            return @stat($real);
         }
         // Zip Folder case
         $search = basename($path);
@@ -347,13 +355,13 @@ class DcoAccessWrapper implements FileWrapper {
         }
         // 000 permission file
         if($real != -1 && is_file($real)){
-            return stat($real);
+            return @stat($real);
         }
         // Handle symlinks!
         if($real != -1 && is_link($real)){
             $realFile = @readlink($real);
             if(is_file($realFile) || is_dir($realFile)) {
-                return stat($realFile);
+                return @stat($realFile);
             } else {
                 // symlink is broken, delete it.
                 @unlink($real);

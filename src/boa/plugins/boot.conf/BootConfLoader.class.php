@@ -112,7 +112,7 @@ class BootConfLoader extends AbstractConfDriver {
                 }
                 $tParams = XMLWriter::replaceXmlKeywords($typePlug->getManifestRawContent("server_settings/param"));
                 $addParams .= '<global_param group_switch_name="'.$fieldName.'" name="instance_name" group_switch_label="'.$typePlug->getManifestLabel().$checkErrorMessage.'" group_switch_value="'.$typePlug->getId().'" default="'.$typePlug->getId().'" type="hidden"/>';
-                $addParams .= str_replace("<param", "<global_param group_switch_name=\"${fieldName}\" group_switch_label=\"".$typePlug->getManifestLabel().$checkErrorMessage."\" group_switch_value=\"".$typePlug->getId()."\" ", $tParams);
+                $addParams .= str_replace("<param", "<global_param group_switch_name=\"{$fieldName}\" group_switch_label=\"".$typePlug->getManifestLabel().$checkErrorMessage."\" group_switch_value=\"".$typePlug->getId()."\" ", $tParams);
                 $addParams .= XMLWriter::replaceXmlKeywords($typePlug->getManifestRawContent("server_settings/global_param"));
             }
         }
@@ -265,6 +265,7 @@ class BootConfLoader extends AbstractConfDriver {
         if(isSet($data["MAILER_ADMIN"])) $uObj->personalRole->setParameterValue("core.conf", "email", $data["MAILER_ADMIN"]);
         $uObj->personalRole->setParameterValue("core.conf", "USER_DISPLAY_NAME", $adminName);
         AuthService::updateRole($uObj->personalRole);
+        $uObj->save("superuser");
 
         $loginP = "USER_LOGIN";
         $i = 0;
@@ -278,6 +279,7 @@ class BootConfLoader extends AbstractConfDriver {
             $uObj->personalRole->setParameterValue("core.conf", "email", $mail);
             $uObj->personalRole->setParameterValue("core.conf", "USER_DISPLAY_NAME", $name);
             AuthService::updateRole($uObj->personalRole);
+            $uObj->save("superuser");
             $i++;
             $loginP = "USER_LOGIN_".$i;
         }
@@ -308,10 +310,8 @@ class BootConfLoader extends AbstractConfDriver {
                 }
             }
 
-            require_once(APP_VENDOR_FOLDER."/dibi/dibi.compact.php");
             // Should throw an exception if there was a problem.
-            \dibi::connect($p);
-            \dibi::disconnect();
+            Utils::pdoConnectFromDibiParams($p);
             echo 'SUCCESS:Connexion established!';
 
         }else if($action == "boot_test_mailer"){
@@ -364,7 +364,8 @@ class BootConfLoader extends AbstractConfDriver {
         if($legacy["NAME"] == "multi"){
             $drivers = $legacy["OPTIONS"]["DRIVERS"];
             $master = $legacy["OPTIONS"]["MASTER_DRIVER"];
-            $slave = array_pop(array_diff(array_keys($drivers), array($master)));
+            $slaveCandidates = array_diff(array_keys($drivers), array($master));
+            $slave = array_pop($slaveCandidates);
 
             $data["MULTI_MODE"] = array("instance_name" => $legacy["OPTIONS"]["MODE"]);
             $data["MULTI_USER_BASE_DRIVER"] = $legacy["OPTIONS"]["USER_BASE_DRIVER"] == $master ? "master" : ($legacy["OPTIONS"]["USER_BASE_DRIVER"] == $slave ? "slave" :  "" ) ;

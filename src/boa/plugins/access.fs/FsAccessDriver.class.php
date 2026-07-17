@@ -169,7 +169,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         if(!isSet($this->actions[$action])) return;
         parent::accessPreprocess($action, $httpVars, $fileVars);
         $selection = new UserSelection();
-        $dir = $httpVars["dir"] OR "";
+        $dir = $httpVars["dir"] ?? "";
         if($this->wrapperClassName == self::DEFAULT_ACCESSWRAPPER_CLASSNAME){
             $dir = FsAccessWrapper::patchPathForBaseDir($dir);
         }
@@ -243,7 +243,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
 
             case "prepare_chunk_dl" :
 
-                $chunkCount = intval($httpVars["chunk_count"]);
+                $chunkCount = intval($httpVars["chunk_count"] ?? 0);
                 $fileId = $this->urlBase.$selection->getUniqueFile();
                 $sessionKey = "chunk_file_".md5($fileId.time());
                 $totalSize = $this->filesystemFileSize($fileId);
@@ -267,8 +267,11 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
 
             case "download_chunk" :
 
-                $chunkIndex = intval($httpVars["chunk_index"]);
-                $chunkKey = $httpVars["file_id"];
+                $chunkIndex = intval($httpVars["chunk_index"] ?? 0);
+                $chunkKey = $httpVars["file_id"] ?? "";
+                if($chunkKey === "" || !isset($_SESSION[$chunkKey]) || !is_array($_SESSION[$chunkKey])){
+                    throw new \Exception("Invalid chunk download session");
+                }
                 $sessData = $_SESSION[$chunkKey];
                 $realFile = $sessData["file"];
                 $chunkSize = $sessData["chunk_size"];
@@ -288,7 +291,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     // Make a temp zip and send it as download
                     $loggedUser = AuthService::getLoggedUser();
                     if(isSet($httpVars["archive_name"])){
-                        $localName = Utils::decodeSecureMagic($httpVars["archive_name"]);
+                        $localName = Utils::decodeSecureMagic($httpVars["archive_name"] ?? "");
                         $this->filterUserSelectionToHidden(array($localName));
                     }else{
                         $localName = (basename($dir)==""?"Files":basename($dir)).".zip";
@@ -347,10 +350,10 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             case "put_content": 
                 if(!isset($httpVars["content"])) break;
                 // Load "code" variable directly from POST array, do not "securePath" or "sanitize"...
-                $code = $httpVars["content"];
-                $file = $selection->getUniqueFile($httpVars["file"]);
+                $code = $httpVars["content"] ?? "";
+                $file = $selection->getUniqueFile($httpVars["file"] ?? "");
                 Logger::logAction("Online Edition", array("file"=>$file));
-                if(isSet($httpVars["encode"]) && $httpVars["encode"] == "base64"){
+                if(isSet($httpVars["encode"]) && ($httpVars["encode"] ?? "") == "base64"){
                     $code = base64_decode($code);
                 }else{
                     $code = SystemTextEncoding::magicDequote($code);
@@ -392,8 +395,8 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     throw new ApplicationException("", 113);
                 }
                 $success = $error = array();
-                $dest = Utils::decodeSecureMagic($httpVars["dest"]);
-                $this->filterUserSelectionToHidden(array($httpVars["dest"]));
+                $dest = Utils::decodeSecureMagic($httpVars["dest"] ?? "");
+                $this->filterUserSelectionToHidden(array($httpVars["dest"] ?? ""));
                 if($selection->inZip()){
                     // Set action to copy anycase (cannot move from the zip).
                     $action = "copy";
@@ -471,11 +474,11 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             //------------------------------------
             case "rename";
 
-                $file = Utils::decodeSecureMagic($httpVars["file"]);
-                $filename_new = Utils::decodeSecureMagic($httpVars["filename_new"]);
+                $file = Utils::decodeSecureMagic($httpVars["file"] ?? "");
+                $filename_new = Utils::decodeSecureMagic($httpVars["filename_new"] ?? "");
                 $dest = null;
                 if(isSet($httpVars["dest"])){
-                    $dest = Utils::decodeSecureMagic($httpVars["dest"]);
+                    $dest = Utils::decodeSecureMagic($httpVars["dest"] ?? "");
                     $filename_new = "";
                 }
                 $this->filterUserSelectionToHidden(array($filename_new));
@@ -496,10 +499,10 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             case "mkdir";
 
                 $messtmp="";
-                $dirname=Utils::decodeSecureMagic($httpVars["dirname"], APP_SANITIZE_HTML_STRICT);
+                $dirname=Utils::decodeSecureMagic($httpVars["dirname"] ?? "", APP_SANITIZE_HTML_STRICT);
                 $dirname = substr($dirname, 0, ConfService::getCoreConf("NODENAME_MAX_LENGTH"));
                 $this->filterUserSelectionToHidden(array($dirname));
-                Controller::applyHook("node.before_create", array(new ManifestNode($dir."/".$dirname), -2));
+                Controller::applyHook("node.before_create", array(new ManifestNode($this->urlBase.$dir."/".$dirname), -2));
                 $error = $this->mkDir($dir, $dirname);
                 if(isSet($error)){
                     throw new ApplicationException($error);
@@ -522,12 +525,12 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             case "mkfile";
 
                 $messtmp="";
-                $filename=Utils::decodeSecureMagic($httpVars["filename"], APP_SANITIZE_HTML_STRICT);
+                $filename=Utils::decodeSecureMagic($httpVars["filename"] ?? "", APP_SANITIZE_HTML_STRICT);
                 $filename = substr($filename, 0, ConfService::getCoreConf("NODENAME_MAX_LENGTH"));
                 $this->filterUserSelectionToHidden(array($filename));
                 $content = "";
                 if(isSet($httpVars["content"])){
-                    $content = $httpVars["content"];
+                    $content = $httpVars["content"] ?? "";
                 }
                 $error = $this->createEmptyFile($dir, $filename, $content);
                 if(isSet($error)){
@@ -553,9 +556,9 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 $messtmp="";
                 $files = $selection->getFiles();
                 $changedFiles = array();
-                $chmod_value = $httpVars["chmod_value"];
-                $recursive = $httpVars["recursive"];
-                $recur_apply_to = $httpVars["recur_apply_to"];
+                $chmod_value = $httpVars["chmod_value"] ?? "";
+                $recursive = $httpVars["recursive"] ?? "";
+                $recur_apply_to = $httpVars["recur_apply_to"] ?? "";
                 foreach ($files as $fileName){
                     $error = $this->chmod($fileName, $chmod_value, ($recursive=="on"), ($recursive=="on"?$recur_apply_to:"both"), $changedFiles);
                 }
@@ -603,7 +606,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     }
                     $userfile_name=Utils::sanitize(SystemTextEncoding::fromPostedFileName($userfile_name), APP_SANITIZE_HTML_STRICT);
                     if(isSet($httpVars["urlencoded_filename"])){
-                        $userfile_name = Utils::sanitize(SystemTextEncoding::fromUTF8(urldecode($httpVars["urlencoded_filename"])), APP_SANITIZE_HTML_STRICT);
+                        $userfile_name = Utils::sanitize(SystemTextEncoding::fromUTF8(urldecode($httpVars["urlencoded_filename"] ?? "")), APP_SANITIZE_HTML_STRICT);
                     }
                     Logger::debug("User filename ".$userfile_name);
                     $userfile_name = substr($userfile_name, 0, ConfService::getCoreConf("NODENAME_MAX_LENGTH"));
@@ -655,7 +658,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                         }
                     }
                     if(isSet($httpVars["appendto_urlencoded_part"])){
-                        $appendTo = Utils::sanitize(SystemTextEncoding::fromUTF8(urldecode($httpVars["appendto_urlencoded_part"])), APP_SANITIZE_HTML_STRICT);
+                        $appendTo = Utils::sanitize(SystemTextEncoding::fromUTF8(urldecode($httpVars["appendto_urlencoded_part"] ?? "")), APP_SANITIZE_HTML_STRICT);
                         if(file_exists($destination ."/" . $appendTo)){
                             Logger::debug("Should copy stream from $userfile_name to $appendTo");
                             $partO = fopen($destination."/".$userfile_name, "r");
@@ -699,12 +702,12 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 $toNode = null;
                 $copyOrMove = false;
                 if(isSet($httpVars["from"])) {
-                    $fromNode = new ManifestNode($this->urlBase.Utils::decodeSecureMagic($httpVars["from"]));
+                    $fromNode = new ManifestNode($this->urlBase.Utils::decodeSecureMagic($httpVars["from"] ?? ""));
                 }
                 if(isSet($httpVars["to"])) {
-                    $toNode = new ManifestNode($this->urlBase.Utils::decodeSecureMagic($httpVars["to"]));
+                    $toNode = new ManifestNode($this->urlBase.Utils::decodeSecureMagic($httpVars["to"] ?? ""));
                 }
-                if(isSet($httpVars["copy"]) && $httpVars["copy"] == "true"){
+                if(isSet($httpVars["copy"]) && ($httpVars["copy"] ?? "") == "true"){
                     $copyOrMove = true;
                 }
                 Controller::applyHook("node.change", array($fromNode, $toNode, $copyOrMove));
@@ -717,14 +720,20 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             case "ls":
 
                 if(!isSet($dir) || $dir == "/") $dir = "";
-                $lsOptions = $this->parseLsOptions((isSet($httpVars["options"])?$httpVars["options"]:"a"));
+                $lsOptions = $this->parseLsOptions((isSet($httpVars["options"])?$httpVars["options"] ?? "":"a"));
 
-                $startTime = microtime();
+                $startTime = microtime(true);
+                $uniqueFile = null;
                 if(isSet($httpVars["file"])){
-                    $uniqueFile = Utils::decodeSecureMagic($httpVars["file"]);
+                    $uniqueFile = Utils::decodeSecureMagic($httpVars["file"] ?? "");
                 }
                 $dir = Utils::securePath(SystemTextEncoding::magicDequote($dir));
-                $path = $this->urlBase.($dir!= ""?($dir[0]=="/"?"":"/").$dir:"");
+                $path = $this->urlBase;
+                if($dir != ""){
+                    $path .= ($dir[0]=="/"?"":"/").$dir;
+                }else{
+                    $path .= "/";
+                }
                 $nonPatchedPath = $path;
                 if($this->wrapperClassName == self::DEFAULT_ACCESSWRAPPER_CLASSNAME){
                     $nonPatchedPath = FsAccessWrapper::unPatchPathForBaseDir($path);
@@ -847,11 +856,11 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                         break;
                     }
                 }
-                if(isSet($httpVars["recursive"]) && $httpVars["recursive"] == "true"){
+                if(isSet($httpVars["recursive"]) && ($httpVars["recursive"] ?? "") == "true"){
                     foreach($fullList["d"] as $nodeDir){
                         $this->switchAction("ls", array(
                             "dir" => SystemTextEncoding::toUTF8($nodeDir->getPath()),
-                            "options"=> $httpVars["options"],
+                            "options"=> $httpVars["options"] ?? "",
                             "recursive" => "true"
                         ), array());
                     }
@@ -872,7 +881,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     }
                 }
 
-                Logger::debug("LS Time : ".intval((microtime()-$startTime)*1000)."ms");
+                Logger::debug("LS Time : ".intval((microtime(true)-$startTime)*1000)."ms");
 
                 XMLWriter::close();
                 return ;
@@ -1066,7 +1075,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 $this->driverConf["HIDE_EXTENSIONS"] = explode(",",$this->driverConf["HIDE_EXTENSIONS"]);
             }
             foreach ($this->driverConf["HIDE_EXTENSIONS"] as $search){
-                if(strcasecmp($search, $pathParts["extension"]) == 0) return true;
+                if(strcasecmp($search, $pathParts["extension"] ?? "") == 0) return true;
             }
         }
         return false;
@@ -1122,7 +1131,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         }else{
             $size = $byteLength;
         }
-        if($gzip && ($size > ConfService::getCoreConf("GZIP_LIMIT") || !function_exists("gzencode") || @strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') === FALSE)){
+        if($gzip && ($size > ConfService::getCoreConf("GZIP_LIMIT") || !function_exists("gzencode") || strpos($_SERVER['HTTP_ACCEPT_ENCODING'] ?? '', 'gzip') === FALSE)){
             $gzip = false; // disable gzip
         }
 
@@ -1140,7 +1149,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         else
         {
             /*
-            if(preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT']) || preg_match('/ WebKit /',$_SERVER['HTTP_USER_AGENT'])){
+            if(preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT'] ?? '') || preg_match('/ WebKit /',$_SERVER['HTTP_USER_AGENT'] ?? '')){
                 $localName = str_replace("+", " ", urlencode(SystemTextEncoding::toUTF8($localName)));
             }
             */
@@ -1398,8 +1407,8 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
 
     function renameAction($actionName, $httpVars)
     {
-        $filePath = SystemTextEncoding::fromUTF8($httpVars["file"]);
-        $newFilename = SystemTextEncoding::fromUTF8($httpVars["filename_new"]);
+        $filePath = SystemTextEncoding::fromUTF8($httpVars["file"] ?? "");
+        $newFilename = SystemTextEncoding::fromUTF8($httpVars["filename_new"] ?? "");
         return $this->rename($filePath, $newFilename);
     }
 
@@ -1927,7 +1936,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
 
     function makeSharedRepositoryOptions($httpVars, $repository){
         $newOptions = array(
-            "PATH" => $repository->getOption("PATH").Utils::decodeSecureMagic($httpVars["file"]),
+            "PATH" => $repository->getOption("PATH").Utils::decodeSecureMagic($httpVars["file"] ?? ""),
             "CREATE" => false, 
             "RECYCLE_BIN" => "", 
             "DEFAULT_RIGHTS" => "");
