@@ -142,11 +142,11 @@ class BootConfLoader extends AbstractConfDriver {
         if(!isSet($coreConf["UNIQUE_INSTANCE_CONFIG"])) $coreConf["UNIQUE_INSTANCE_CONFIG"] = array();
         if(!isSet($coreAuth["MASTER_INSTANCE_CONFIG"])) $coreAuth["MASTER_INSTANCE_CONFIG"] = array();
 
-        $storageType = $data["STORAGE_TYPE"]["type"];
+        $storageType = Utils::arrayGet(Utils::arrayGet($data, "STORAGE_TYPE", array()), "type");
         $coreConfLIVECONFIG = array();
         if($storageType == "db"){
             // REWRITE BOOTSTRAP.JSON
-            $coreConf["DIBI_PRECONFIGURATION"] = $data["STORAGE_TYPE"]["db_type"];
+            $coreConf["DIBI_PRECONFIGURATION"] = Utils::arrayGet(Utils::arrayGet($data, "STORAGE_TYPE", array()), "db_type");
             if(isSet($coreConf["DIBI_PRECONFIGURATION"]["sqlite3_driver"])){
                 $dbFile = VarsFilter::filter($coreConf["DIBI_PRECONFIGURATION"]["sqlite3_database"]);
                 if(!file_exists(dirname($dbFile))){
@@ -168,7 +168,7 @@ class BootConfLoader extends AbstractConfDriver {
             $sqlPlugs = array("conf.sql", "auth.sql", "feed.sql", "log.sql", "mq.sql");
             foreach($sqlPlugs as $plugId){
                 $plug = PluginsService::findPluginById($plugId);
-                $plug->installSQLTables(array("SQL_DRIVER" => $data["STORAGE_TYPE"]["db_type"]));
+                $plug->installSQLTables(array("SQL_DRIVER" => Utils::arrayGet(Utils::arrayGet($data, "STORAGE_TYPE", array()), "db_type")));
             }
 
         }else{
@@ -208,7 +208,7 @@ class BootConfLoader extends AbstractConfDriver {
                 "core.log/UNIQUE_PLUGIN_INSTANCE" => "log.sql",
                 "core.mq/UNIQUE_MS_INSTANCE" => "mq.sql"
             );
-            $data["ENABLE_NOTIF"] = $data["STORAGE_TYPE"]["notifications"];
+            $data["ENABLE_NOTIF"] = Utils::arrayGet(Utils::arrayGet($data, "STORAGE_TYPE", array()), "notifications");
         }
 
 
@@ -219,11 +219,11 @@ class BootConfLoader extends AbstractConfDriver {
             "ENABLE_NOTIF"      => "core.notifications/USER_EVENTS",
             "APPLICATION_WELCOME" => "gui.ajax/CUSTOM_WELCOME_MESSAGE"
         );
-        $mailerEnabled = $data["MAILER_ENABLE"]["status"];
+        $mailerEnabled = Utils::arrayGet(Utils::arrayGet($data, "MAILER_ENABLE", array()), "status");
         if($mailerEnabled == "yes"){
             // Enable core.mailer
-            $data["MAILER_SYSTEM"] = $data["MAILER_ENABLE"]["MAILER_SYSTEM"];
-            $data["MAILER_ADMIN"] = $data["MAILER_ENABLE"]["MAILER_ADMIN"];
+            $data["MAILER_SYSTEM"] = Utils::arrayGet(Utils::arrayGet($data, "MAILER_ENABLE", array()), "MAILER_SYSTEM");
+            $data["MAILER_ADMIN"] = Utils::arrayGet(Utils::arrayGet($data, "MAILER_ENABLE", array()), "MAILER_ADMIN");
             $direct = array_merge($direct, array(
                 "MAILER_SYSTEM" => "mailer.phpmailer-lite/MAILER",
                 "MAILER_ADMIN" => "core.mailer/FROM",
@@ -256,10 +256,10 @@ class BootConfLoader extends AbstractConfDriver {
         ConfService::setTmpStorageImplementations($newConfigPlugin, $newAuthPlugin);
         require_once($newConfigPlugin->getUserClassFileName());
 
-        $adminLogin = $data["ADMIN_USER_LOGIN"];
-        $adminName = $data["ADMIN_USER_NAME"];
-        $adminPass = $data["ADMIN_USER_PASS"];
-        $adminPass2 = $data["ADMIN_USER_PASS2"];
+        $adminLogin = Utils::arrayGet($data, "ADMIN_USER_LOGIN");
+        $adminName = Utils::arrayGet($data, "ADMIN_USER_NAME");
+        $adminPass = Utils::arrayGet($data, "ADMIN_USER_PASS");
+        $adminPass2 = Utils::arrayGet($data, "ADMIN_USER_PASS2");
         AuthService::createUser($adminLogin, $adminPass, true);
         $uObj = $newConfigPlugin->createUserObject($adminLogin);
         if(isSet($data["MAILER_ADMIN"])) $uObj->personalRole->setParameterValue("core.conf", "email", $data["MAILER_ADMIN"]);
@@ -302,7 +302,7 @@ class BootConfLoader extends AbstractConfDriver {
 
         if($action == "boot_test_sql_connexion"){
 
-            $p = Utils::cleanDibiDriverParameters($data["STORAGE_TYPE"]["db_type"]);
+            $p = Utils::cleanDibiDriverParameters(Utils::arrayGet(Utils::arrayGet($data, "STORAGE_TYPE", array()), "db_type"));
             if($p["driver"] == "sqlite3"){
                 $dbFile = VarsFilter::filter($p["database"]);
                 if(!file_exists(dirname($dbFile))){
@@ -317,12 +317,12 @@ class BootConfLoader extends AbstractConfDriver {
         }else if($action == "boot_test_mailer"){
 
             $mailerPlug = PluginsService::findPluginById("mailer.phpmailer-lite");
-            $mailerPlug->loadConfigs(array("MAILER" => $data["MAILER_ENABLE"]["MAILER_SYSTEM"]));
+            $mailerPlug->loadConfigs(array("MAILER" => Utils::arrayGet(Utils::arrayGet($data, "MAILER_ENABLE", array()), "MAILER_SYSTEM")));
             $mailerPlug->sendMail(
-                array($data["MAILER_ENABLE"]["MAILER_ADMIN"]),
+                array(Utils::arrayGet(Utils::arrayGet($data, "MAILER_ENABLE", array()), "MAILER_ADMIN")),
                 ConfService::getCoreConf("APPLICATION_TITLE")." Test Mail",
                 "Body of the test",
-                array($data["MAILER_ENABLE"]["MAILER_ADMIN"])
+                array(Utils::arrayGet(Utils::arrayGet($data, "MAILER_ENABLE", array()), "MAILER_ADMIN"))
             );
             echo 'SUCCESS:Mail sent to the admin adress, please check it is in your inbox!';
 
@@ -339,7 +339,7 @@ class BootConfLoader extends AbstractConfDriver {
                 "group_switch_value" => "conf.".$internal["CONF_DRIVER"]["NAME"],
             );
             unset($internal["CONF_DRIVER"]["NAME"]);
-            $options["UNIQUE_INSTANCE_CONFIG"] = array_merge($options["UNIQUE_INSTANCE_CONFIG"], $internal["CONF_DRIVER"]["OPTIONS"]);
+            $options["UNIQUE_INSTANCE_CONFIG"] = array_merge(Utils::arrayGet($options, "UNIQUE_INSTANCE_CONFIG"), $internal["CONF_DRIVER"]["OPTIONS"]);
             return;
 
         }else if($pluginId == "core.auth" && isSet($internal["AUTH_DRIVER"])){

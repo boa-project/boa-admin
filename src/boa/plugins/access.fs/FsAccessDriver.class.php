@@ -431,7 +431,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     $nodesDiffs["ADD"][] = $newNode;
                     if($action == "move") $nodesDiffs["REMOVE"][] = $selectedPath;
                 }
-                if(!(RecycleBinManager::getRelativeRecycle() ==$dest && $this->driverConf["HIDE_RECYCLE"] == true)){
+                if(!(RecycleBinManager::getRelativeRecycle() ==$dest && Utils::arrayGet($this->driverConf, "HIDE_RECYCLE") == true)){
                     //$reloadDataNode = $dest;
                 }
 
@@ -742,7 +742,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 if(!isSet($threshold) || intval($threshold) == 0) $threshold = 500;
                 $limitPerPage = $this->repository->getOption("PAGINATION_NUMBER");
                 if(!isset($limitPerPage) || intval($limitPerPage) == 0) $limitPerPage = 200;
-                $countFiles = $this->countFiles($path, !$lsOptions["f"]);
+                $countFiles = $this->countFiles($path, !Utils::arrayGet($lsOptions, "f"));
                 if($countFiles > $threshold){
                     if(isSet($uniqueFile)){
                         $originalLimitPerPage = $limitPerPage;
@@ -765,7 +765,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     $metaData["repo_has_recycle"] = "true";
                 }
                 $parentManifestNode = new ManifestNode($nonPatchedPath, $metaData);
-                $parentManifestNode->loadNodeInfo(false, true, ($lsOptions["l"]?"all":"minimal"));
+                $parentManifestNode->loadNodeInfo(false, true, (Utils::arrayGet($lsOptions, "l")?"all":"minimal"));
                 Controller::applyHook("node.read", array(&$parentManifestNode));
                 if(XMLWriter::$headerSent == "tree"){
                     XMLWriter::renderManifestNode($parentManifestNode, false);
@@ -779,7 +779,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                         $totalPages, 
                         $this->countFiles($path, TRUE)
                     );
-                    if(!$lsOptions["f"]){
+                    if(!Utils::arrayGet($lsOptions, "f")){
                         XMLWriter::close();
                         exit(1);
                     }
@@ -793,8 +793,8 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 closedir($handle);
                 $fullList = array("d" => array(), "z" => array(), "f" => array());
                 $nodes = scandir($path);
-                if(!empty($this->driverConf["SCANDIR_RESULT_SORTFONC"])){
-                    usort($nodes, $this->driverConf["SCANDIR_RESULT_SORTFONC"]);
+                if(!empty(Utils::arrayGet($this->driverConf, "SCANDIR_RESULT_SORTFONC"))){
+                    usort($nodes, Utils::arrayGet($this->driverConf, "SCANDIR_RESULT_SORTFONC"));
                 }
                 //while(strlen($nodeName = readdir($handle)) > 0){
                 foreach ($nodes as $nodeName){
@@ -824,7 +824,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     if($isLeaf != "") $meta = array("is_file" => ($isLeaf?"1":"0"));
                     $node = new ManifestNode($currentFile, $meta);
                     $node->setLabel($nodeName);
-                    $node->loadNodeInfo(false, false, ($lsOptions["l"]?"all":"minimal"));
+                    $node->loadNodeInfo(false, false, (Utils::arrayGet($lsOptions, "l")?"all":"minimal"));
                     if(!empty($node->metaData["nodeName"]) && $node->metaData["nodeName"] != $nodeName){
                         $node->setUrl($nonPatchedPath."/".$node->metaData["nodeName"]);
                     }
@@ -841,7 +841,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     $nodeType = "d";
                     if($node->isLeaf()){
                         if(Utils::isBrowsableArchive($nodeName)) {
-                            if($lsOptions["f"] && $lsOptions["z"]){
+                            if(Utils::arrayGet($lsOptions, "f") && Utils::arrayGet($lsOptions, "z")){
                                 $nodeType = "f";
                             }else{
                                 $nodeType = "z";
@@ -857,7 +857,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                     }
                 }
                 if(isSet($httpVars["recursive"]) && ($httpVars["recursive"] ?? "") == "true"){
-                    foreach($fullList["d"] as $nodeDir){
+                    foreach(Utils::arrayGet($fullList, "d", array()) as $nodeDir){
                         $this->switchAction("ls", array(
                             "dir" => SystemTextEncoding::toUTF8($nodeDir->getPath()),
                             "options"=> $httpVars["options"] ?? "",
@@ -865,13 +865,13 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                         ), array());
                     }
                 }else{
-                    array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), $fullList["d"]);
+                    array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), Utils::arrayGet($fullList, "d"));
                 }
-                array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), $fullList["z"]);
-                array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), $fullList["f"]);
+                array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), Utils::arrayGet($fullList, "z"));
+                array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), Utils::arrayGet($fullList, "f"));
 
                 // ADD RECYCLE BIN TO THE LIST
-                if($dir == ""  && !$uniqueFile && RecycleBinManager::recycleEnabled() && $this->driverConf["HIDE_RECYCLE"] !== true)
+                if($dir == ""  && !$uniqueFile && RecycleBinManager::recycleEnabled() && Utils::arrayGet($this->driverConf, "HIDE_RECYCLE") !== true)
                 {
                     $recycleBinOption = RecycleBinManager::getRelativeRecycle();
                     if(file_exists($this->urlBase.$recycleBinOption)){
@@ -924,7 +924,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
                 $lsOptions[$key] = false;
             }
         }
-        if($lsOptions["a"]){
+        if(Utils::arrayGet($lsOptions, "a")){
             $lsOptions["d"] = $lsOptions["z"] = $lsOptions["f"] = true;
         }
         return $lsOptions;
@@ -997,17 +997,17 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         if($isLeaf){
             $metaData["bytesize"] = $this->filesystemFileSize($node->getUrl());
         }
-        $metaData["filesize"] = Utils::roundSize($metaData["bytesize"]);
+        $metaData["filesize"] = Utils::roundSize(Utils::arrayGet($metaData, "bytesize"));
         if(Utils::isBrowsableArchive($nodeName)){
             $metaData["APP_mime"] = "browsable_archive";
         }
 
         if($details == "minimal"){
             $miniMeta = array(
-                "is_file" => $metaData["is_file"],
-                "filename" => $metaData["filename"],
-                "bytesize" => $metaData["bytesize"],
-                "modiftime" => $metaData["modiftime"],
+                "is_file" => Utils::arrayGet($metaData, "is_file"),
+                "filename" => Utils::arrayGet($metaData, "filename"),
+                "bytesize" => Utils::arrayGet($metaData, "bytesize"),
+                "modiftime" => Utils::arrayGet($metaData, "modiftime"),
             );
             $node->mergeMetadata($miniMeta);
         }else{
@@ -1023,7 +1023,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
     function filterUserSelectionToHidden($files){
         foreach ($files as $file){
             $file = basename($file);
-            if(Utils::isHidden($file) && !$this->driverConf["SHOW_HIDDEN_FILES"]){
+            if(Utils::isHidden($file) && !Utils::arrayGet($this->driverConf, "SHOW_HIDDEN_FILES")){
                 throw new \Exception("Forbidden");
             }
             if($this->filterFile($file) || $this->filterFolder($file)){
@@ -1034,7 +1034,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
 
     function filterNodeName($nodePath, $nodeName, &$isLeaf, $lsOptions){
         $isLeaf = (is_file($nodePath."/".$nodeName) || Utils::isBrowsableArchive($nodeName));
-        if(Utils::isHidden($nodeName) && !$this->driverConf["SHOW_HIDDEN_FILES"]){
+        if(Utils::isHidden($nodeName) && !Utils::arrayGet($this->driverConf, "SHOW_HIDDEN_FILES")){
             return false;
         }
         $nodeType = "d";
@@ -1042,7 +1042,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
             if(Utils::isBrowsableArchive($nodeName)) $nodeType = "z";
             else $nodeType = "f";
         }
-        if(!$lsOptions[$nodeType]) return false;
+        if(!$lsOptions || !Utils::arrayGet($lsOptions, $nodeType)) return false;
         if($nodeType == "d"){
             if(RecycleBinManager::recycleEnabled() 
                 && $nodePath."/".$nodeName == RecycleBinManager::getRecyclePath()){
@@ -1063,18 +1063,18 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
     function filterFile($fileName){
         $pathParts = pathinfo($fileName);
         if(array_key_exists("HIDE_FILENAMES", $this->driverConf) && !empty($this->driverConf["HIDE_FILENAMES"])){
-            if(!is_array($this->driverConf["HIDE_FILENAMES"])) {
-                $this->driverConf["HIDE_FILENAMES"] = explode(",",$this->driverConf["HIDE_FILENAMES"]);
+            if(!is_array(Utils::arrayGet($this->driverConf, "HIDE_FILENAMES"))) {
+                $this->driverConf["HIDE_FILENAMES"] = explode(",",Utils::arrayGet($this->driverConf, "HIDE_FILENAMES"));
             }
-            foreach ($this->driverConf["HIDE_FILENAMES"] as $search){
+            foreach(Utils::arrayGet($this->driverConf, "HIDE_FILENAMES", array()) as $search){
                 if(strcasecmp($search, $pathParts["basename"]) == 0) return true;
             }
         }
         if(array_key_exists("HIDE_EXTENSIONS", $this->driverConf) && !empty($this->driverConf["HIDE_EXTENSIONS"])){
-            if(!is_array($this->driverConf["HIDE_EXTENSIONS"])) {
-                $this->driverConf["HIDE_EXTENSIONS"] = explode(",",$this->driverConf["HIDE_EXTENSIONS"]);
+            if(!is_array(Utils::arrayGet($this->driverConf, "HIDE_EXTENSIONS"))) {
+                $this->driverConf["HIDE_EXTENSIONS"] = explode(",",Utils::arrayGet($this->driverConf, "HIDE_EXTENSIONS"));
             }
-            foreach ($this->driverConf["HIDE_EXTENSIONS"] as $search){
+            foreach(Utils::arrayGet($this->driverConf, "HIDE_EXTENSIONS", array()) as $search){
                 if(strcasecmp($search, $pathParts["extension"] ?? "") == 0) return true;
             }
         }
@@ -1083,10 +1083,10 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
 
     function filterFolder($folderName, $compare = "equals"){
         if(array_key_exists("HIDE_FOLDERS", $this->driverConf) && !empty($this->driverConf["HIDE_FOLDERS"])){
-            if(!is_array($this->driverConf["HIDE_FOLDERS"])) {
-                $this->driverConf["HIDE_FOLDERS"] = explode(",",$this->driverConf["HIDE_FOLDERS"]);
+            if(!is_array(Utils::arrayGet($this->driverConf, "HIDE_FOLDERS"))) {
+                $this->driverConf["HIDE_FOLDERS"] = explode(",",Utils::arrayGet($this->driverConf, "HIDE_FOLDERS"));
             }
-            foreach ($this->driverConf["HIDE_FOLDERS"] as $search){
+            foreach(Utils::arrayGet($this->driverConf, "HIDE_FOLDERS", array()) as $search){
                 if($compare == "equals" && strcasecmp($search, $folderName) == 0) return true;
                 if($compare == "contains" && strpos($folderName, "/".$search) !== false) return true;
             }
@@ -1285,7 +1285,7 @@ class FsAccessDriver extends AbstractAccessDriver implements FileWrapperProvider
         while (strlen($file = readdir($handle)) > 0)
         {
             if($file != "." && $file !=".." 
-                && !(Utils::isHidden($file) && !$this->driverConf["SHOW_HIDDEN_FILES"])){
+                && !(Utils::isHidden($file) && !Utils::arrayGet($this->driverConf, "SHOW_HIDDEN_FILES"))){
                 if($foldersOnly && is_file($dirName."/".$file)) continue;
                 $count++;
                 if($nonEmptyCheckOnly) break;

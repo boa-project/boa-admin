@@ -61,7 +61,7 @@ abstract class AbstractConfDriver extends Plugin {
 
         // BACKWARD COMPATIBILIY PREVIOUS CONFIG VIA OPTIONS
         if(isSet($options["CUSTOM_DATA"])){
-            $custom = $options["CUSTOM_DATA"];
+            $custom = Utils::arrayGet($options, "CUSTOM_DATA");
             $serverSettings = $this->xPath->query('//server_settings')->item(0);
             foreach($custom as $key => $value){
                 $n = $this->manifestDoc->createElement("param");

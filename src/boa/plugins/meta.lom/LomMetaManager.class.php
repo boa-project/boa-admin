@@ -169,7 +169,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         $mess = $this->mess = ConfService::getMessages();
         switch ($action) {
             case 'get_spec_by_id':
-                $this->getSpecById($httpVars["spec_id"]);
+                $this->getSpecById(Utils::arrayGet($httpVars, "spec_id"));
                 break;
             case 'get_specs_list':
                 $this->loadSpecsAsJson();
@@ -178,7 +178,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             case 'mkdco':
                 XMLWriter::header("output");
                 $messtmp="";
-                $dconame=Utils::decodeSecureMagic($httpVars["dirname"], APP_SANITIZE_HTML_STRICT);
+                $dconame=Utils::decodeSecureMagic(Utils::arrayGet($httpVars, "dirname"), APP_SANITIZE_HTML_STRICT);
                 $dconame = substr($dirname, 0, ConfService::getCoreConf("NODENAME_MAX_LENGTH"));
                 $this->filterUserSelectionToHidden(array($dirname));
                 Controller::applyHook("node.before_create", array(new ManifestNode($dir."/".$dirname), -2));
@@ -643,7 +643,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             $path = $this->accessDriver->urlBase.$rel_path;
             $path = call_user_func(array($this->accessDriver->wrapperClassName, "getRealFSReference"), $path);
             $rootpath = call_user_func(array($this->accessDriver->wrapperClassName, "getRealFSReference"), $this->accessDriver->urlBase);
-            $recursively = $httpVars["recursively"];
+            $recursively = Utils::arrayGet($httpVars, "recursively");
 
             $pmeta = $this->getParentMeta($path, $rootpath);
 
@@ -658,9 +658,9 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             $data["converted"] = 0;
             foreach($all as $file) {
                 if ($this->assignDroMetadata($file, str_replace($rootpath, '', $file), $pmeta)) {
-                    $data["converted"]++;
+                    $data["converted"] = Utils::arrayGet($data, "converted", 0) + 1;
                 }
-                $data["processed"]++;
+                $data["processed"] = Utils::arrayGet($data, "processed", 0) + 1;
                 $elapsed = (microtime(true) - $start_time) * 1000;
                 if ($elapsed > 1000) {
                     $this->partialJsonOutput($data);
@@ -669,7 +669,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             }
 
             $data["status"] = "COMPLETED";
-            $data["processed"] = $data["of"];
+            $data["processed"] = Utils::arrayGet($data, "of");
             $this->partialJsonOutput($data);
         }
         catch(\Exception $e)

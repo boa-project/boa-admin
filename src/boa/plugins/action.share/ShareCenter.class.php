@@ -596,7 +596,7 @@ class ShareCenter extends Plugin{
     }
 
     static function loadMinisite($data){
-        $repository = $data["REPOSITORY"];
+        $repository = Utils::arrayGet($data, "REPOSITORY");
         $html = file_get_contents(APP_PLUGINS_FOLDER."/action.share/res/minisite.php");
         $html = XMLWriter::replaceXmlKeywords($html);
         $html = str_replace("APP_START_REPOSITORY", $repository, $html);
@@ -604,7 +604,7 @@ class ShareCenter extends Plugin{
         session_name("App_Shared");
         session_start();
         if(!empty($data["PRELOG_USER"])){
-            AuthService::logUser($data["PRELOG_USER"], "", true);
+            AuthService::logUser(Utils::arrayGet($data, "PRELOG_USER"), "", true);
             $html = str_replace("APP_PRELOGED_USER", "preloged_user", $html);
         }else{
             $_SESSION["PENDING_REPOSITORY_ID"] = $repository;
@@ -635,14 +635,14 @@ class ShareCenter extends Plugin{
     static function loadPubliclet($data)
     {
         // create driver from $data
-        $className = $data["DRIVER"]."AccessDriver";
+        $className = Utils::arrayGet($data, "DRIVER")."AccessDriver";
         $hash = md5(serialize($data));
         $u = parse_url($_SERVER["REQUEST_URI"] ?? "");
         $path = is_array($u) ? ($u["path"] ?? "") : "";
         $shortHash = pathinfo(basename($path), PATHINFO_FILENAME);
 
-        if ( ($data["EXPIRE_TIME"] && time() > $data["EXPIRE_TIME"]) || 
-            ($data["DOWNLOAD_LIMIT"] && $data["DOWNLOAD_LIMIT"]> 0 && $data["DOWNLOAD_LIMIT"] <= PublicletCounter::getCount($shortHash)) )
+        if ( (Utils::arrayGet($data, "EXPIRE_TIME") && time() > Utils::arrayGet($data, "EXPIRE_TIME")) || 
+            (Utils::arrayGet($data, "DOWNLOAD_LIMIT") && Utils::arrayGet($data, "DOWNLOAD_LIMIT")> 0 && Utils::arrayGet($data, "DOWNLOAD_LIMIT") <= PublicletCounter::getCount($shortHash)) )
         {
             // Remove the publiclet, it's done
             if (strstr(realpath($_SERVER["SCRIPT_FILENAME"]),realpath(ConfService::getCoreConf("PUBLIC_DOWNLOAD_FOLDER"))) !== FALSE){
@@ -667,7 +667,7 @@ class ShareCenter extends Plugin{
         }
 
         $APP_LINK_HAS_PASSWORD = false;
-        $APP_LINK_BASENAME = SystemTextEncoding::toUTF8(basename($data["FILE_PATH"]));
+        $APP_LINK_BASENAME = SystemTextEncoding::toUTF8(basename(Utils::arrayGet($data, "FILE_PATH")));
         $customs = array("title", "legend", "legend_pass", "background_attributes_1", "background_attributes_2", "background_attributes_3", "text_color", "background_color", "textshadow_color");
         $images = array("button", "background_1", "background_2", "background_3");
         $shareCenter = PluginsService::findPlugin("action", "share");
@@ -698,7 +698,7 @@ class ShareCenter extends Plugin{
 
         HTMLWriter::charsetHeader();
         // Check password
-        if (strlen($data["PASSWORD"]))
+        if (strlen(Utils::arrayGet($data, "PASSWORD")))
         {
             if (!isSet($_POST['password']) || ($_POST['password'] != $data["PASSWORD"]))
             {
@@ -715,36 +715,36 @@ class ShareCenter extends Plugin{
                 return;
             }
         }
-        $filePath = APP_PLUGINS_FOLDER."/access.".$data["DRIVER"]."/".$className.".class.php";
+        $filePath = APP_PLUGINS_FOLDER."/access.".Utils::arrayGet($data, "DRIVER")."/".$className.".class.php";
         if(!is_file($filePath)){
                 die("Warning, cannot find driver for conf storage! ($className, $filePath)");
         }
         require_once($filePath);
-        $driver = new $className($data["PLUGIN_ID"], $data["BASE_DIR"]);
+        $driver = new $className(Utils::arrayGet($data, "PLUGIN_ID"), Utils::arrayGet($data, "BASE_DIR"));
         $driver->loadManifest();
 
         //$hash = md5(serialize($data));
         PublicletCounter::increment($shortHash);
 
         //AuthService::logUser($data["OWNER_ID"], "", true);
-        AuthService::logTemporaryUser($data["OWNER_ID"], $shortHash);
+        AuthService::logTemporaryUser(Utils::arrayGet($data, "OWNER_ID"), $shortHash);
         if($driver->hasMixin("credentials_consumer") && isSet($data["SAFE_USER"]) && isSet($data["SAFE_PASS"])){
             // FORCE SESSION MODE
             Credential::getInstance()->forceSessionCredentialsUsage();
-            Credential::storeCredentials($data["SAFE_USER"], $data["SAFE_PASS"]);
+            Credential::storeCredentials(Utils::arrayGet($data, "SAFE_USER"), Utils::arrayGet($data, "SAFE_PASS"));
         }
 
-        $repoObject = $data["REPOSITORY"];
+        $repoObject = Utils::arrayGet($data, "REPOSITORY");
         ConfService::switchRootDir($repoObject->getId());
         ConfService::loadRepositoryDriver();
         PluginsService::getInstance()->initActivePlugins();
         try{
-            $params = array("file" => SystemTextEncoding::toUTF8($data["FILE_PATH"]));
+            $params = array("file" => SystemTextEncoding::toUTF8(Utils::arrayGet($data, "FILE_PATH")));
             if(isSet($data["PLUGINS_DATA"])){
-                $params["PLUGINS_DATA"] = $data["PLUGINS_DATA"];
+                $params["PLUGINS_DATA"] = Utils::arrayGet($data, "PLUGINS_DATA");
             }
             if(isset($_GET["ct"]) && $_GET["ct"] == "true"){
-                $mime = pathinfo($params["file"], PATHINFO_EXTENSION);
+                $mime = pathinfo(Utils::arrayGet($params, "file"), PATHINFO_EXTENSION);
                 $editors = PluginsService::searchAllManifests("//editor[contains(@mimes,'$mime') and @previewProvider='true']", "node", true, true, false);
                 if(count($editors)){
                     foreach($editors as $editor){
@@ -752,13 +752,13 @@ class ShareCenter extends Plugin{
                         $callbacks = $xPath->query("//action[@contentTypedProvider]", $editor);
                         if($callbacks->length) {
                             $data["ACTION"] = $callbacks->item(0)->getAttribute("name");
-                            if($data["ACTION"] == "audio_proxy") $params["file"] = base64_encode($params["file"]);
+                            if($data["ACTION"] == "audio_proxy") $params["file"] = base64_encode(Utils::arrayGet($params, "file"));
                             break;
                         }
                     }
                 }
             }
-            Controller::findActionAndApply($data["ACTION"], $params, null);
+            Controller::findActionAndApply(Utils::arrayGet($data, "ACTION"), $params, null);
             register_shutdown_function(array("AuthService", "clearTemporaryUser"), $shortHash);
         }catch (\Exception $e){
             AuthService::clearTemporaryUser($shortHash);
@@ -1022,7 +1022,7 @@ class ShareCenter extends Plugin{
         }else{
             if($repository->getOption("META_SOURCES")){
                 $options["META_SOURCES"] = $repository->getOption("META_SOURCES");
-                foreach($options["META_SOURCES"] as $index => $data){
+                foreach(Utils::arrayGet($options, "META_SOURCES", array()) as $index => $data){
                     if(isSet($data["USE_SESSION_CREDENTIALS"]) && $data["USE_SESSION_CREDENTIALS"] === true){
                         $options["META_SOURCES"][$index]["ENCODED_CREDENTIALS"] = Credential::getEncodedCredentialString();
                     }
@@ -1204,7 +1204,7 @@ class ShareCenter extends Plugin{
             $publicletData = self::loadPublicletData($element);
             if(isSet($publicletData["OWNER_ID"]) && $publicletData["OWNER_ID"] == $loggedUser->getId()){
                 PublicletCounter::delete($element);
-                unlink($publicletData["PUBLICLET_PATH"]);
+                unlink(Utils::arrayGet($publicletData, "PUBLICLET_PATH"));
             }else{
                 throw new \Exception($mess["shared.12"]);
             }

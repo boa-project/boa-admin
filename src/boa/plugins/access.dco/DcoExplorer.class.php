@@ -72,7 +72,7 @@ class DcoExplorer{
         $options["options"] = $this->parseLsOptions((isSet($httpVars["options"])?$httpVars["options"]:"a"));
         $startTime = microtime(true);
         if(isSet($httpVars["file"])){
-            $options["file"] = Utils::decodeSecureMagic($httpVars["file"]);
+            $options["file"] = Utils::decodeSecureMagic(Utils::arrayGet($httpVars, "file"));
         }
         $dir = Utils::securePath(SystemTextEncoding::magicDequote($dir));
         $path = $driver->urlBase;
@@ -125,15 +125,15 @@ class DcoExplorer{
         $limitPerPage = $driver->repository->getOption("PAGINATION_NUMBER");
         if(!isset($limitPerPage) || intval($limitPerPage) == 0) $limitPerPage = 200;
 
-        $path = call_user_func(array($driver->wrapperClassName, "getRealFSReference"), $options["path"]);
-        $nonPatchedPath = $options["nonPatchedPath"];
+        $path = call_user_func(array($driver->wrapperClassName, "getRealFSReference"), Utils::arrayGet($options, "path"));
+        $nonPatchedPath = Utils::arrayGet($options, "nonPatchedPath");
         $totalPages = null;
         $crtPage = null;
 
         if (array_key_exists("file", $options)){
-            $entries = glob($path."/".$options["file"]."/{.}manifest", GLOB_NOSORT|GLOB_BRACE);
+            $entries = glob($path."/".Utils::arrayGet($options, "file")."/{.}manifest", GLOB_NOSORT|GLOB_BRACE);
             if (count($entries)){
-                $node = $this->getDcoManifestNode($options["path"]."/".$options["file"]."/.manifest"); //$entries[0]
+                $node = $this->getDcoManifestNode(Utils::arrayGet($options, "path")."/".Utils::arrayGet($options, "file")."/.manifest"); //$entries[0]
                 return array(array($node), $totalPages, $crtPage, 1);
             }
             return array(array(), $totalPages, $crtPage, 0);
@@ -164,7 +164,7 @@ class DcoExplorer{
             if($limitPerPage > 0 && ($cursor - $offset) >= $limitPerPage) {
                 break;
             }
-            $dco = $this->getDcoManifestNode($options["path"]."/".basename(dirname($entry))."/.manifest");
+            $dco = $this->getDcoManifestNode(Utils::arrayGet($options, "path")."/".basename(dirname($entry))."/.manifest");
             $objects[] = $dco;
             $cursor ++;
         }
@@ -177,7 +177,7 @@ class DcoExplorer{
         $meta = $json->manifest;
         $meta["APP_mime"] = "dco";
         $meta["manifest"] = json_encode($json->manifest);
-        $title = $meta["title"];
+        $title = Utils::arrayGet($meta, "title");
         $node = new ManifestNode(dirname($manifestPath), $meta);
         $node->setLabel($title);
         return $node;
@@ -209,22 +209,22 @@ class DcoExplorer{
         $startTime = microtime(true);
         $driver = $this->_driver;
         $mess = $driver->mess;
-        $dir = $options["dir"];
+        $dir = Utils::arrayGet($options, "dir");
 
-        $lsOptions = $options["options"];
+        $lsOptions = Utils::arrayGet($options, "options");
         $uniqueFile = null;
         if (array_key_exists("file", $options)){
-            $uniqueFile = $options["file"];    
+            $uniqueFile = Utils::arrayGet($options, "file");    
         }    
 
-        $path = $options["path"]; // $driver->urlBase.($dir!= ""?($dir[0]=="/"?"":"/").$dir:"");
-        $nonPatchedPath = $options["nonPatchedPath"]; // $path;
+        $path = Utils::arrayGet($options, "path"); // $driver->urlBase.($dir!= ""?($dir[0]=="/"?"":"/").$dir:"");
+        $nonPatchedPath = Utils::arrayGet($options, "nonPatchedPath"); // $path;
         $threshold = $driver->repository->getOption("PAGINATION_THRESHOLD");
         if(!isSet($threshold) || intval($threshold) == 0) $threshold = 500;
         $limitPerPage = $driver->repository->getOption("PAGINATION_NUMBER");
         if(!isset($limitPerPage) || intval($limitPerPage) == 0) $limitPerPage = 200;
         
-        $countFiles = $this->countFiles($path, !$lsOptions["f"]);
+        $countFiles = $this->countFiles($path, !Utils::arrayGet($lsOptions, "f"));
         $totalPages = null;
         $crtPage = null;
         if($countFiles > $threshold){
@@ -262,7 +262,7 @@ class DcoExplorer{
             }
         }
 
-        $parentManifestNode->loadNodeInfo(false, true, ($lsOptions["l"]?"all":"minimal"));
+        $parentManifestNode->loadNodeInfo(false, true, (Utils::arrayGet($lsOptions, "l")?"all":"minimal"));
         Controller::applyHook("node.read", array(&$parentManifestNode));
 
         if(XMLWriter::$headerSent == "tree"){
@@ -288,8 +288,8 @@ class DcoExplorer{
         closedir($handle);
         $fullList = array("d" => array(), "z" => array(), "f" => array());
         $nodes = scandir($path);
-        if(!empty($this->_driver->driverConf["SCANDIR_RESULT_SORTFONC"])){
-            usort($nodes, $this->_driver->driverConf["SCANDIR_RESULT_SORTFONC"]);
+        if(!empty(Utils::arrayGet($this->_driver->driverConf, "SCANDIR_RESULT_SORTFONC"))){
+            usort($nodes, Utils::arrayGet($this->_driver->driverConf, "SCANDIR_RESULT_SORTFONC"));
         }
         //while(strlen($nodeName = readdir($handle)) > 0){
         foreach ($nodes as $nodeName){
@@ -328,7 +328,7 @@ class DcoExplorer{
             else{
                 $node->setLabel($nodeName);
             }
-            $node->loadNodeInfo(false, false, ($lsOptions["l"]?"all":"minimal"));
+            $node->loadNodeInfo(false, false, (Utils::arrayGet($lsOptions, "l")?"all":"minimal"));
             if(!empty($node->metaData["nodeName"]) && $node->metaData["nodeName"] != $nodeName){
                 $node->setUrl($nonPatchedPath."/".$node->metaData["nodeName"]);
             }
@@ -345,7 +345,7 @@ class DcoExplorer{
             $nodeType = "d";
             if($node->isLeaf()){
                 if(Utils::isBrowsableArchive($nodeName)) {
-                    if($lsOptions["f"] && $lsOptions["z"]){
+                    if(Utils::arrayGet($lsOptions, "f") && Utils::arrayGet($lsOptions, "z")){
                         $nodeType = "f";
                     }else{
                         $nodeType = "z";
@@ -361,7 +361,7 @@ class DcoExplorer{
             }
         }
         if(isSet($httpVars["recursive"]) && $httpVars["recursive"] == "true"){
-            foreach($fullList["d"] as $nodeDir){
+            foreach(Utils::arrayGet($fullList, "d", array()) as $nodeDir){
                 $this->switchAction("ls", array(
                     "dir" => SystemTextEncoding::toUTF8($nodeDir->getPath()),
                     "options"=> $httpVars["options"] ?? "a",
@@ -369,13 +369,13 @@ class DcoExplorer{
                 ), array());
             }
         }else{
-            array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), $fullList["d"]);
+            array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), Utils::arrayGet($fullList, "d"));
         }
-        array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), $fullList["z"]);
-        array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), $fullList["f"]);
+        array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), Utils::arrayGet($fullList, "z"));
+        array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), Utils::arrayGet($fullList, "f"));
 
         // ADD RECYCLE BIN TO THE LIST
-        if($dir == ""  && !$uniqueFile && RecycleBinManager::recycleEnabled() && $driver->driverConf["HIDE_RECYCLE"] !== true)
+        if($dir == ""  && !$uniqueFile && RecycleBinManager::recycleEnabled() && Utils::arrayGet($driver->driverConf, "HIDE_RECYCLE") !== true)
         {
             $recycleBinOption = RecycleBinManager::getRelativeRecycle();
             if(file_exists($driver->urlBase.$recycleBinOption)){
@@ -406,7 +406,7 @@ class DcoExplorer{
                 $lsOptions[$key] = false;
             }
         }
-        if($lsOptions["a"]){
+        if(Utils::arrayGet($lsOptions, "a")){
             $lsOptions["d"] = $lsOptions["z"] = $lsOptions["f"] = true;
         }
         return $lsOptions;
@@ -440,15 +440,15 @@ class DcoExplorer{
     }
 
     private function renderPagination($options, $totalPages, $crtPage, $countFiles ){       
-        $lsOptions = $options["options"];
+        $lsOptions = Utils::arrayGet($options, "options");
         if(isSet($totalPages) && isSet($crtPage)){
             XMLWriter::renderPaginationData(
                  $countFiles, 
                 $crtPage, 
                 $totalPages, 
-                $this->countFiles($options["path"], TRUE)
+                $this->countFiles(Utils::arrayGet($options, "path"), TRUE)
             ); 
-            if(!$lsOptions["f"]){
+            if(!Utils::arrayGet($lsOptions, "f")){
                 XMLWriter::close();
                 exit(1);
             }          

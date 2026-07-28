@@ -37,6 +37,7 @@ use BoA\Core\Services\AuthService;
 use BoA\Core\Services\ConfService;
 use BoA\Core\Services\PluginsService;
 use BoA\Core\Utils\Filters\VarsFilter;
+use BoA\Core\Utils\Utils;
 use BoA\Core\Xml\ManifestNode;
 use BoA\Plugins\Core\Log\Logger;
 
@@ -138,7 +139,7 @@ class AbstractAccessDriver extends Plugin {
         $plugin = PluginsService::findPlugin("access", $accessType);
         $origWrapperData = $plugin->detectStreamWrapper(true);
         $origStreamURL = $origWrapperData["protocol"]."://$repositoryId";
-        $destRepoId = $httpVars["dest_repository_id"];
+        $destRepoId = Utils::arrayGet($httpVars, "dest_repository_id");
         $destRepoObject = ConfService::getRepositoryById($destRepoId);
         $destRepoAccess = $destRepoObject->getAccessType();
         $plugin = PluginsService::findPlugin("access", $destRepoAccess);
@@ -169,7 +170,7 @@ class AbstractAccessDriver extends Plugin {
             if(isSet($httpVars["moving_files"])){
                 $touch = filemtime($origFile);
             }
-            $destFile = $destStreamURL.SystemTextEncoding::fromUTF8($httpVars["dest"])."/".$bName;
+            $destFile = $destStreamURL.SystemTextEncoding::fromUTF8(Utils::arrayGet($httpVars, "dest"))."/".$bName;
             Controller::applyHook("node.before_create", array($destFile));
             if(!is_file($origFile)){
                 throw new Exception("Cannot find $origFile");

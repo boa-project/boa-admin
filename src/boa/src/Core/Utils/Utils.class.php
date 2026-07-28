@@ -1459,6 +1459,28 @@ class Utils
         }
     }
 
+    /**
+     * Safe array/ArrayAccess key read for PHP 8+ (undefined keys no longer soft-fail as notices).
+     *
+     * Prefer this over bare $arr[$key] when the key may be absent. Use ?? for trivial
+     * one-liners; use arrayGet when it keeps nested / repeated access readable.
+     *
+     * @param array|\ArrayAccess|null $array
+     * @param string|int $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public static function arrayGet($array, $key, $default = null)
+    {
+        if (is_array($array)) {
+            return array_key_exists($key, $array) ? $array[$key] : $default;
+        }
+        if ($array instanceof \ArrayAccess) {
+            return $array->offsetExists($key) ? $array[$key] : $default;
+        }
+        return $default;
+    }
+
     public static function parseStandardFormParameters(&$repDef, &$options, $userId = null, $prefix = "DRIVER_OPTION_", $binariesContext = null){
 
         if($binariesContext === null){
@@ -1524,8 +1546,12 @@ class Utils
                 }
                 if(isSet($repDef[$key."_replication"])){
                     $repKey = $repDef[$key."_replication"];
-                    if(!is_array($replicationGroups[$repKey])) $replicationGroups[$repKey] = array();
-                    $replicationGroups[$repKey][] = $key;
+                    $group = self::arrayGet($replicationGroups, $repKey);
+                    if (!is_array($group)) {
+                        $group = array();
+                    }
+                    $group[] = $key;
+                    $replicationGroups[$repKey] = $group;
                 }
                 $options[substr($key, strlen($prefix))] = $value;
                 unset($repDef[$key]);
@@ -1539,8 +1565,8 @@ class Utils
         // DO SOMETHING WITH REPLICATED PARAMETERS?
         if(count($switchesGroups)){
             foreach($switchesGroups as $fieldName => $groupName){
+                $gValues = array();
                 if(isSet($options[$fieldName])){
-                    $gValues = array();
                     $radic = $groupName."_".$options[$fieldName]."_";
                     foreach($options as $optN => $optV){
                         if(strpos($optN, $radic) === 0){
@@ -1549,7 +1575,7 @@ class Utils
                         }
                     }
                 }
-                $options[$fieldName."_group_switch"] = $options[$fieldName];
+                $options[$fieldName."_group_switch"] = $options[$fieldName] ?? null;
                 $options[$fieldName] = $gValues;
             }
         }
@@ -1558,12 +1584,12 @@ class Utils
 
     public static function cleanDibiDriverParameters($params){
         if(!is_array($params)) return $params;
-        $value = $params["group_switch_value"];
+        $value = self::arrayGet($params, "group_switch_value");
         if(isSet($value)){
             if($value == "core"){
                 $bootStorage = ConfService::getBootConfStorageImpl();
                 $configs = $bootStorage->loadPluginConfig("core", "conf");
-                $params = $configs["DIBI_PRECONFIGURATION"];
+                $params = self::arrayGet($configs, "DIBI_PRECONFIGURATION", array());
             }else{
                 unset($params["group_switch_value"]);
             }

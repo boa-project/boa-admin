@@ -63,7 +63,7 @@ class ImagePreviewer extends Plugin implements ITaskProviderFactory {
     	$destStreamURL = $streamData["protocol"]."://".$repository->getId();
 		    	
 		if($action == "preview_data_proxy"){
-			$file = Utils::decodeSecureMagic($httpVars["file"]);
+			$file = Utils::decodeSecureMagic(Utils::arrayGet($httpVars, "file"));
             if(!file_exists($destStreamURL.$file)) return;
 			
 			if(isSet($httpVars["get_thumb"]) && $this->pluginConf["GENERATE_THUMBNAIL"]){

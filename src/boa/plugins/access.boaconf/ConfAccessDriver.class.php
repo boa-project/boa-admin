@@ -347,7 +347,7 @@ class ConfAccessDriver extends AbstractAccessDriver
                     XMLWriter::header();
                     if(!isSet($httpVars["file"])) XMLWriter::sendFilesListComponentConfig('<columns switchDisplayMode="detail"><column messageId="boaconf.1" attributeName="APP_label" sortType="String"/><column messageId="boaconf.102" attributeName="description" sortType="String"/></columns>');
                     foreach ($nodes as $key => $data){
-                        print '<tree text="'.Utils::xmlEntities($data["LABEL"]).'" description="'.Utils::xmlEntities($data["DESCRIPTION"]).'" icon="'.$data["ICON"].'" filename="'.$parentName.$key.'"/>';
+                        print '<tree text="'.Utils::xmlEntities(Utils::arrayGet($data, "LABEL")).'" description="'.Utils::xmlEntities(Utils::arrayGet($data, "DESCRIPTION")).'" icon="'.Utils::arrayGet($data, "ICON").'" filename="'.$parentName.$key.'"/>';
                     }
                     XMLWriter::close();
 
@@ -500,8 +500,8 @@ class ConfAccessDriver extends AbstractAccessDriver
 
                 $jsonData = Utils::decodeSecureMagic($httpVars["json_data"] ?? "");
                 $data = json_decode($jsonData, true);
-                $roleData = $data["ROLE"];
-                $forms = $data["FORMS"];
+                $roleData = Utils::arrayGet($data, "ROLE");
+                $forms = Utils::arrayGet($data, "FORMS");
                 $binariesContext = array();
                 if(isset($userObject)){
                     $binariesContext = array("USER" => $userObject->getId());
@@ -521,10 +521,10 @@ class ConfAccessDriver extends AbstractAccessDriver
                 }
                 if(isSet($userObject) && isSet($data["USER"]) && isSet($data["USER"]["PROFILE"])){
                     $userObject->setAdmin(($data["USER"]["PROFILE"] == "admin"));
-                    $userObject->setProfile($data["USER"]["PROFILE"]);
+                    $userObject->setProfile(Utils::arrayGet(Utils::arrayGet($data, "USER", array()), "PROFILE"));
                 }
                 if(isSet($data["GROUP_LABEL"]) && isSet($groupLabel) && $groupLabel != $data["GROUP_LABEL"]){
-                    ConfService::getConfStorageImpl()->relabelGroup($groupPath, $data["GROUP_LABEL"]);
+                    ConfService::getConfStorageImpl()->relabelGroup($groupPath, Utils::arrayGet($data, "GROUP_LABEL"));
                 }
 
                 $output = array();
@@ -909,16 +909,16 @@ class ConfAccessDriver extends AbstractAccessDriver
 					$repDef["DRIVER_OPTIONS"] = $options;
                     unset($repDef["DRIVER_OPTIONS"]["APP_GROUP_PATH_PARAMETER"]);
 				}
-				if(strstr($repDef["DRIVER"], "template_") !== false){
-					$templateId = substr($repDef["DRIVER"], 14);
+				if(strstr(Utils::arrayGet($repDef, "DRIVER"), "template_") !== false){
+					$templateId = substr(Utils::arrayGet($repDef, "DRIVER"), 14);
 					$templateRepo = ConfService::getRepositoryById($templateId);
-					$newRep = $templateRepo->createTemplateChild($repDef["DISPLAY"], $repDef["DRIVER_OPTIONS"]);
+					$newRep = $templateRepo->createTemplateChild(Utils::arrayGet($repDef, "DISPLAY"), Utils::arrayGet($repDef, "DRIVER_OPTIONS"));
 				}else{
                     if($currentUserIsGroupAdmin){
                         throw new \Exception("You are not allowed to create a repository from a driver. Use a template instead.");
                     }
                     $pServ = PluginsService::getInstance();
-                    $driver = $pServ->getPluginByTypeName("access", $repDef["DRIVER"]);
+                    $driver = $pServ->getPluginByTypeName("access", Utils::arrayGet($repDef, "DRIVER"));
 
 					$newRep = ConfService::createRepositoryFromArray(0, $repDef);
                     $testFile = $driver->getBaseDir()."/test.".$newRep->getAccessType()."Access.php";
@@ -975,7 +975,7 @@ class ConfAccessDriver extends AbstractAccessDriver
                     if(AuthService::getLoggedUser()!=null && AuthService::getLoggedUser()->getGroupPath()!=null){
                         $basePath = AuthService::getLoggedUser()->getGroupPath();
                     }
-                    $value =  Utils::securePath(rtrim($basePath, "/")."/".ltrim($options["APP_GROUP_PATH_PARAMETER"], "/"));
+                    $value =  Utils::securePath(rtrim($basePath, "/")."/".ltrim(Utils::arrayGet($options, "APP_GROUP_PATH_PARAMETER"), "/"));
                     $newRep->setGroupPath($value);
                 }
 
@@ -1987,15 +1987,15 @@ class ConfAccessDriver extends AbstractAccessDriver
 		
 		foreach ($files as $file){
 			$publicletData = $this->loadPublicletData($file);
-            if(!is_a($publicletData["REPOSITORY"], "Repository")){
+            if(!is_a(Utils::arrayGet($publicletData, "REPOSITORY"), "Repository")){
                 continue;
             }
-			XMLWriter::renderNode(str_replace(".php", "", basename($file)), "".SystemTextEncoding::toUTF8($publicletData["REPOSITORY"]->getDisplay()).":/".SystemTextEncoding::toUTF8($publicletData["FILE_PATH"]), true, array(
+			XMLWriter::renderNode(str_replace(".php", "", basename($file)), "".SystemTextEncoding::toUTF8(Utils::arrayGet($publicletData, "REPOSITORY")->getDisplay()).":/".SystemTextEncoding::toUTF8(Utils::arrayGet($publicletData, "FILE_PATH")), true, array(
 				"icon"		=> "html.png",
-				"password" => ($publicletData["PASSWORD"]!=""?$publicletData["PASSWORD"]:"-"), 
-				"expiration" => ($publicletData["EXPIRE_TIME"]!=0?date($mess["date_format"], $publicletData["EXPIRE_TIME"]):"-"), 
-				"expired" => ($publicletData["EXPIRE_TIME"]!=0?($publicletData["EXPIRE_TIME"]<time()?$mess["shared.21"]:$mess["shared.22"]):"-"), 
-				"integrity"  => (!$publicletData["SECURITY_MODIFIED"]?$mess["shared.15"]:$mess["shared.16"]),
+				"password" => (Utils::arrayGet($publicletData, "PASSWORD")!=""?Utils::arrayGet($publicletData, "PASSWORD"):"-"), 
+				"expiration" => (Utils::arrayGet($publicletData, "EXPIRE_TIME")!=0?date($mess["date_format"], Utils::arrayGet($publicletData, "EXPIRE_TIME")):"-"), 
+				"expired" => (Utils::arrayGet($publicletData, "EXPIRE_TIME")!=0?(Utils::arrayGet($publicletData, "EXPIRE_TIME")<time()?$mess["shared.21"]:$mess["shared.22"]):"-"), 
+				"integrity"  => (!Utils::arrayGet($publicletData, "SECURITY_MODIFIED")?$mess["shared.15"]:$mess["shared.16"]),
 				"download_url" => $downloadBase . "/".basename($file),
 				"owner" => (isset($publicletData["OWNER_ID"])?$publicletData["OWNER_ID"]:"-"),
 				"APP_mime" => "shared_file")

@@ -294,7 +294,66 @@ final class Http06DcoObjectTest extends AbstractHttpEndpointTest
         ]);
     }
 
-    /** @depends test_post_save_dcometa_minimal_payload */
+    /**
+     * Mirrors the browser form for lom-rd metadata save, including *_replication keys
+     * that previously triggered Undefined array key in Utils::parseStandardFormParameters.
+     *
+     * @depends test_post_save_dcometa_minimal_payload
+     */
+    public function test_post_save_dcometa_lom_rd_with_replication_fields(): void
+    {
+        $this->skipUnlessDco();
+        HttpSharedState::ensureMinimalLomSpec();
+
+        $response = $this->postActionWithRetry(
+            'save_dcometa',
+            [
+                'plugin_id' => 'meta.lom',
+                'dir' => '/',
+                'spec_id' => 'lom-rd',
+                'mode' => 'single',
+                'file' => HttpSharedState::dcoPath(),
+                '_method' => 'put',
+                'DCO__translateto_lang' => 'none',
+                'DCO_meta.fields.general.title' => '{"none":"Test Object DCO"}',
+                'DCO_meta.fields.general.title_apptype' => 'string',
+                'DCO_meta.fields.general.description' => '{"none":""}',
+                'DCO_meta.fields.general.description_apptype' => 'textarea',
+                'DCO_meta.fields.general.keywords' => '{"none":""}',
+                'DCO_meta.fields.general.keywords_apptype' => 'keywords',
+                'DCO_meta.fields.general.language' => ['es'],
+                'DCO_meta.fields.technical.location' => '',
+                'DCO_meta.fields.technical.location_apptype' => 'string',
+                'DCO_meta.fields.technical.format' => '',
+                'DCO_meta.fields.rights.description' => '{"none":""}',
+                'DCO_meta.fields.rights.description_apptype' => 'textarea',
+                'DCO_meta.fields.rights.cost' => 'no',
+                'DCO_meta.fields.rights.copyright' => 'cc by-nc-sa 4.0',
+                'DCO_meta.fields.lifecycle.contribution.rol' => '',
+                'DCO_meta.fields.lifecycle.contribution.rol_replication' => 'replicable_meta.fields.lifecycle.contribution',
+                'DCO_meta.fields.clasification.taxon_path.source' => 'general',
+                'DCO_meta.fields.clasification.taxon_path.source_apptype' => 'string',
+                'DCO_meta.fields.clasification.taxon_path.source_replication' => 'replicable_meta.fields.clasification.taxon_path',
+                'DCO_meta.fields.clasification.taxon_path.id_replication' => 'replicable_meta.fields.clasification.taxon_path',
+            ],
+            $this->dcoRepoQuery()
+        );
+        HttpAssertions::assertNoUnhandledPhpFault($response);
+        $this->assertNotSame('', $response['body'], 'save_dcometa returned empty body');
+        $this->assertNull(
+            HttpAssertions::extractErrorMessage($response['body']),
+            'save_dcometa failed: ' . (HttpAssertions::extractErrorMessage($response['body']) ?? substr($response['body'], 0, 400))
+        );
+        // Success is JSON metadata/manifest (or a tree without ERROR).
+        $this->assertTrue(
+            str_contains($response['body'], 'metadata')
+            || str_contains($response['body'], 'manifest')
+            || str_contains($response['body'], '{'),
+            'Expected JSON metadata payload, got: ' . substr($response['body'], 0, 300)
+        );
+    }
+
+    /** @depends test_post_save_dcometa_lom_rd_with_replication_fields */
     public function test_post_publish_metadata_without_ready_state_expected(): void
     {
         $this->skipUnlessDco();
