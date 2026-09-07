@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -29,7 +29,7 @@
  */
 namespace BoA\Core\Services;
 
-use BoA\Core\Plugins\Plugin; 
+use BoA\Core\Plugins\Plugin;
 use BoA\Core\Utils\Utils;
 
 defined('APP_EXEC') or die( 'Access not allowed');

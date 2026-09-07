@@ -461,7 +461,8 @@ class ConfService
         if(isSet($_SESSION['REPO_ID']) &&  isSet($currentRepos[$_SESSION['REPO_ID']])){
             return $_SESSION['REPO_ID'];
         }
-        return array_shift(array_keys($currentRepos));
+        $keys = array_keys($currentRepos);
+        return array_shift($keys);
     }
     /**
      * Get the current repo label

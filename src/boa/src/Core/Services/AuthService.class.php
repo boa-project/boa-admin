@@ -116,9 +116,8 @@ class AuthService
      * Get the currently logged user object
      * @return AbstractUser
      */
-    static function getLoggedUser()
-    {
-        if(self::$useSession && isSet($_SESSION["APP_USER"])) {
+    static function getLoggedUser() {
+        if (self::$useSession && isSet($_SESSION["APP_USER"])) {
             if(is_a($_SESSION["APP_USER"], "__PHP_Incomplete_Class")){
                 session_unset("APP_USER");
                 return null;

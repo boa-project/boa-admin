@@ -29,8 +29,6 @@
  */
 namespace BoA\Core\Utils;
 
-use BoA\Core\Access\Repository;
-use BoA\Core\Http\Controller;
 use BoA\Core\Plugins\Plugin;
 use BoA\Core\Services\AuthService;
 use BoA\Core\Services\ConfService;
@@ -39,8 +37,6 @@ use BoA\Core\Utils\Filters\VarsFilter;
 use BoA\Core\Utils\JSPacker;
 use BoA\Core\Utils\Text\SystemTextEncoding;
 use BoA\Plugins\Core\Log\Logger;
-
-use BoA\Plugins\Conf\Serial\SerialUser;
 
 defined('APP_EXEC') or die('Access not allowed');
 
@@ -350,7 +346,7 @@ class Utils
             if (isSet($session["USE_EXISTING_TOKEN_IF_EXISTS"])) {
                 unset($session["USE_EXISTING_TOKEN_IF_EXISTS"]);
             }
-            setcookie("APP_GUI", null);
+            setcookie("APP_GUI", '');
         }
     }
 

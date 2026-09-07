@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -56,7 +56,7 @@ class Router {
      *
      */
     public function route() {
-        
+
         if( !isSet($_GET["action"]) && !isSet($_GET["get_action"])
             && !isSet($_POST["action"]) && !isSet($_POST["get_action"])
             && defined("APP_FORCE_SSL_REDIRECT") && APP_FORCE_SSL_REDIRECT === true
@@ -134,13 +134,14 @@ class Router {
             AuthService::logUser(null, null);
             // Check that current user can access current repository, try to switch otherwise.
             $loggedUser = AuthService::getLoggedUser();
-            if($loggedUser == null)
-            {
+            if($loggedUser == null) {
                 // Try prelogging user if the session expired but the logging data is in fact still present
                 // For example, for basic_http auth.
                 AuthService::preLogUser((isSet($httpVars["remote_session"])?$httpVars["remote_session"]:""));
                 $loggedUser = AuthService::getLoggedUser();
-                if($loggedUser == null) $requireAuth = true;
+                if($loggedUser == null) {
+                    $requireAuth = true;
+                }
             }
             if($loggedUser != null)
             {
@@ -165,7 +166,7 @@ class Router {
         //------------------------------------------------------------
         if(AuthService::usersEnabled())
         {
-            $loggedUser = AuthService::getLoggedUser(); 
+            $loggedUser = AuthService::getLoggedUser();
             if($action == "upload" && ($loggedUser == null || !$loggedUser->canWrite(ConfService::getCurrentRepositoryId()."")) && isSet($_FILES['Filedata']))
             {
                 header('HTTP/1.0 ' . '410 Not authorized');
@@ -197,10 +198,7 @@ class Router {
             XMLWriter::requireAuth();
             XMLWriter::close();
         }
+
         session_write_close();
-    }   
+    }
 }
-
-
-
-

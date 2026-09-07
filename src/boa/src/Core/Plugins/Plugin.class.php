@@ -390,7 +390,7 @@ class Plugin implements \Serializable{
      * The XML Manifest is base64 encoded before serialization.
      * @return string
      */
-    public function serialize(){
+    public function serialize() {
         if($this->manifestDoc != null){
             $this->manifestXML = base64_encode($this->manifestDoc->saveXML());
         }
@@ -399,6 +399,22 @@ class Plugin implements \Serializable{
             $serialArray[$attr] = serialize($this->$attr);
         }
         return serialize($serialArray);
+    }
+
+    /**
+     * Required for the Serializable interface: php >= 8.1 compatibility.
+     *
+     * @return string
+     */
+    public function __serialize() {
+        if($this->manifestDoc != null){
+            $this->manifestXML = base64_encode($this->manifestDoc->saveXML());
+        }
+        $serialArray = array();
+        foreach ($this->serializableAttributes as $attr){
+            $serialArray[$attr] = serialize($this->$attr);
+        }
+        return $serialArray;
     }
 
     /**
@@ -419,6 +435,26 @@ class Plugin implements \Serializable{
             unset($this->manifestXML);
         }
         //var_dump($this);
+    }
+
+    /**
+     * Required for the Serializable interface: php >= 8.1 compatibility.
+     *
+     * @param array $data
+     * @return void
+     */
+    public function __unserialize($data) {
+
+        foreach ($data as $key => $value){
+            $this->$key = unserialize($value);
+        }
+        if($this->manifestXML != NULL){
+            //$this->manifestDoc = DOMDocument::loadXML(base64_decode($this->manifestXML));
+            $this->manifestDoc = new \DOMDocument(1.0, "UTF-8");
+            $this->manifestDoc->loadXML(base64_decode($this->manifestXML));
+            $this->reloadXPath();
+            unset($this->manifestXML);
+        }
     }
 
     /**

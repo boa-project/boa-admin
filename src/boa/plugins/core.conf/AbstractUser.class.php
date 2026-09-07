@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -78,13 +78,13 @@ abstract class AbstractUser
 	 * @var AbstractConfDriver
 	 */
 	var $storage;
-	
+
 	function __construct($id, $storage=null){
 		$this->id = $id;
 		if($storage == null){
 			$storage = ConfService::getConfStorageImpl();
 		}
-		$this->storage = $storage;		
+		$this->storage = $storage;
 		$this->load();
 	}
 
@@ -115,7 +115,7 @@ abstract class AbstractUser
         $this->save("user");
 		return $newHash; //md5($this->id.":".$newHash.":boa");
 	}
-	
+
 	function getId(){
 		return $this->id;
 	}
@@ -124,14 +124,14 @@ abstract class AbstractUser
      * @return bool
      */
     function storageExists(){
-		
+
 	}
-	
+
 	function getVersion(){
 		if(!isSet($this->version)) return "";
 		return $this->version;
 	}
-	
+
 	function setVersion($v){
 		$this->version = $v;
 	}
@@ -150,7 +150,7 @@ abstract class AbstractUser
         $this->roles[$roleObject->getId()] = $roleObject;
         $this->recomputeMergedRole();
 	}
-	
+
 	function removeRole($roleId){
 		if(isSet($this->rights["app.roles"]) && isSet($this->rights["app.roles"][$roleId])){
 			unset($this->rights["app.roles"][$roleId]);
@@ -159,7 +159,7 @@ abstract class AbstractUser
         }
         $this->recomputeMergedRole();
 	}
-	
+
 	function getRoles(){
 		if(isSet($this->rights["app.roles"])) {
             uksort($this->rights["app.roles"], array($this, "orderRoles"));
@@ -199,30 +199,30 @@ abstract class AbstractUser
     }
 
 	function isAdmin(){
-		return $this->hasAdmin; 
+		return $this->hasAdmin;
 	}
-	
+
 	function setAdmin($boolean){
 		$this->hasAdmin = $boolean;
 	}
-	
+
 	function hasParent(){
 		return isSet($this->parentUser);
 	}
-	
+
 	function setParent($user){
 		$this->parentUser = $user;
 	}
-	
+
 	function getParent(){
 		return $this->parentUser;
 	}
-	
+
 	function canRead($rootDirId){
         if(!empty($this->rights["app.lock"])) return false;
         return $this->mergedRole->canRead($rootDirId);
 	}
-	
+
 	function canWrite($rootDirId){
         if(!empty($this->rights["app.lock"])) return false;
         return $this->mergedRole->canWrite($rootDirId);
@@ -244,7 +244,7 @@ abstract class AbstractUser
 		return ($this->mergedRole->canRead($repositoryId) || $this->mergedRole->canWrite($repositoryId)) ;
         */
 	}
-	
+
 	function getRight($rootDirId){
         return $this->mergedRole->getAcl($rootDirId);
 	}
@@ -260,21 +260,21 @@ abstract class AbstractUser
 		if(isSet($this->prefs[$prefName])) return $this->prefs[$prefName];
 		return "";
 	}
-	
+
 	function setPref($prefName, $prefValue){
 		$this->prefs[$prefName] = $prefValue;
 	}
-	
+
 	function setArrayPref($prefName, $prefPath, $prefValue){
 		if(!isSet($this->prefs[$prefName])) $this->prefs[$prefName] = array();
 		$this->prefs[$prefName][$prefPath] = $prefValue;
 	}
-	
+
 	function getArrayPref($prefName, $prefPath){
 		if(!isSet($this->prefs[$prefName]) || !isSet($this->prefs[$prefName][$prefPath])) return "";
 		return $this->prefs[$prefName][$prefPath];
 	}
-		
+
 	function addBookmark($path, $title="", $repId = -1){
 		if(!isSet($this->bookmarks)) $this->bookmarks = array();
 		if($repId == -1) $repId = ConfService::getCurrentRepositoryId();
@@ -289,10 +289,10 @@ abstract class AbstractUser
 		}
 		$this->bookmarks[$repId][] = array("PATH"=>trim($path), "TITLE"=>$title);
 	}
-	
+
 	function removeBookmark($path){
 		$repId = ConfService::getCurrentRepositoryId();
-		if(isSet($this->bookmarks) 
+		if(isSet($this->bookmarks)
 			&& isSet($this->bookmarks[$repId])
 			&& is_array($this->bookmarks[$repId]))
 			{
@@ -300,7 +300,7 @@ abstract class AbstractUser
 				{
 					$toCompare = "";
 					if(is_string($v)) $toCompare = $v;
-					else if(is_array($v)) $toCompare = $v["PATH"];					
+					else if(is_array($v)) $toCompare = $v["PATH"];
 					if($toCompare == trim($path)) {
                         unset($this->bookmarks[$repId][$k]);
                         return true;
@@ -309,10 +309,10 @@ abstract class AbstractUser
 			}
         return false;
 	}
-	
+
 	function renameBookmark($path, $title){
 		$repId = ConfService::getCurrentRepositoryId();
-		if(isSet($this->bookmarks) 
+		if(isSet($this->bookmarks)
 			&& isSet($this->bookmarks[$repId])
 			&& is_array($this->bookmarks[$repId]))
 			{
@@ -320,28 +320,28 @@ abstract class AbstractUser
 				{
 					$toCompare = "";
 					if(is_string($v)) $toCompare = $v;
-					else if(is_array($v)) $toCompare = $v["PATH"];					
+					else if(is_array($v)) $toCompare = $v["PATH"];
 					if($toCompare == trim($path)){
 						 $this->bookmarks[$repId][$k] = array("PATH"=>trim($path), "TITLE"=>$title);
 					}
 				}
-			} 		
+			}
 	}
-	
+
 	function getBookmarks()
 	{
-		if(isSet($this->bookmarks) 
+		if(isSet($this->bookmarks)
 			&& isSet($this->bookmarks[ConfService::getCurrentRepositoryId()]))
 			return $this->bookmarks[ConfService::getCurrentRepositoryId()];
 		return array();
 	}
-	
+
 	abstract function load();
-	
+
 	abstract function save($context = "superuser");
-	
+
 	abstract function getTemporaryData($key);
-	
+
 	abstract function saveTemporaryData($key, $value);
 
     /** Decode a user supplied password before using it */
@@ -372,7 +372,9 @@ abstract class AbstractUser
             throw new Exception("Empty role, this is not normal");
         }
         uksort($this->roles, array($this, "orderRoles"));
-        $this->mergedRole =  $this->roles[array_shift(array_keys($this->roles))];
+        $keys = array_keys($this->roles);
+        $roles = array_shift($keys);
+        $this->mergedRole =  $this->roles[$roles];
         if(count($this->roles) > 1){
             $this->parentRole = $this->mergedRole;
         }

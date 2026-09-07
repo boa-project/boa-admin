@@ -117,7 +117,8 @@ class ShareCenter extends Plugin{
         }
         $this->accessDriver = $this->repository->driverInstance;
         $this->urlBase = $this->repository->driverInstance->getResourceUrl("/");
-        $this->baseProtocol = array_shift(explode("://", $this->urlBase));
+        $parts = explode("://", $this->urlBase);
+        $this->baseProtocol = array_shift($parts);
         if(array_key_exists("meta.watch", PluginsService::getInstance()->getActivePlugins())){
             $this->watcher = PluginsService::getInstance()->getPluginById("meta.watch");
         }

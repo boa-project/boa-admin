@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -154,10 +154,10 @@ class HTMLWriter
      * @param $errorMessage
      * @return
      */
-    static function javascriptErrorHandler($errorType, $errorMessage){    	
+    static function javascriptErrorHandler($errorType, $errorMessage){
     	// Handle "@" case!
     	if(error_reporting() == 0) return ;
-    	restore_error_handler();    	
+    	restore_error_handler();
     	die("<script language='javascript'>parent.app.displayMessage('ERROR', '".str_replace("'", "\'", $errorMessage)."');</script>");
     }
 

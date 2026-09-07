@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /*
  * If you have a charset warning, or problems displaying filenames with accented characters,
  * check your system locale and set it in the form lang_country.charset
@@ -44,8 +44,8 @@ define("APP_TMP_DIR", APP_DATA_PATH."/tmp");
  * > Concurrent versions of the app: use session.cookie_path to differentiate them.
  */
 $APP_INISET = array();
-//$APP_INISET["session.save_path"] = APP_DATA_PATH."/tmp/sessions";
-//$APP_INISET["session.cookie_path"] = "/BoA";
+$APP_INISET["session.save_path"] = APP_DATA_PATH."/tmp/sessions";
+$APP_INISET["session.cookie_path"] = "/BoA";
 
 /*
  * If you want to force the https, uncomment the line below. This will automatically

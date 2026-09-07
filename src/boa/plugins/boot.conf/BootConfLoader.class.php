@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -209,6 +209,8 @@ class BootConfLoader extends AbstractConfDriver {
                 "core.mq/UNIQUE_MS_INSTANCE" => "mq.sql"
             );
             $data["ENABLE_NOTIF"] = $data["STORAGE_TYPE"]["notifications"];
+        } else {
+            $data["ENABLE_NOTIF"] = false;
         }
 
 
@@ -282,11 +284,18 @@ class BootConfLoader extends AbstractConfDriver {
             $loginP = "USER_LOGIN_".$i;
         }
 
+        if (file_exists(APP_PLUGINS_CACHE_FILE)) {
+            @unlink(APP_PLUGINS_CACHE_FILE);
+        }
 
+        if (file_exists(APP_PLUGINS_REQUIRES_FILE)) {
+            @unlink(APP_PLUGINS_REQUIRES_FILE);
+        }
 
-        @unlink(APP_PLUGINS_CACHE_FILE);
-        @unlink(APP_PLUGINS_REQUIRES_FILE);
-        @unlink(APP_PLUGINS_MESSAGES_FILE);
+        if (file_exists(APP_PLUGINS_MESSAGES_FILE)) {
+            @unlink(APP_PLUGINS_MESSAGES_FILE);
+        }
+
         Utils::setApplicationFirstRunPassed();
         session_destroy();
 
