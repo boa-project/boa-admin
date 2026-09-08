@@ -555,5 +555,6 @@ $mess=array(
 "478" => "Add",
 "479" => "Remove",
 "480" => "No language",
-"481" => "Continue"
+"481" => "Continue",
+"missing_app_secret_key" => "Missing configuration application secret key"
 );

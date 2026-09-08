@@ -69,10 +69,16 @@ define("SOFTWARE_UPDATE_SITE", "https://github.com/boa-project");
 // The admin password is created and his password is changed,
 // this config has no more impact.
 define("ADMIN_PASSWORD", "admin");
-// Application secret for OpenSSL Crypto (override via env APP_SECRET_KEY in Docker).
-if (!defined('APP_SECRET_KEY')) {
+// Application secret for OpenSSL Crypto. Required: define APP_SECRET_KEY or set the env var.
+// There is no default. A missing key is reported after autoload via ConfService.
+$__boaMissingSecret = false;
+if (!defined('APP_SECRET_KEY') || APP_SECRET_KEY === '') {
 	$__boaSecret = getenv('APP_SECRET_KEY');
-	define('APP_SECRET_KEY', ($__boaSecret !== false && $__boaSecret !== '') ? $__boaSecret : 'change-me-boa-dev-secret-key');
+	if ($__boaSecret === false || $__boaSecret === '' || defined('APP_SECRET_KEY')) {
+		$__boaMissingSecret = true;
+	} else {
+		define('APP_SECRET_KEY', $__boaSecret);
+	}
 }
 // For a specific distribution, you can specify where the
 // log files will be stored. This should be detected by log.* plugins
@@ -126,7 +132,17 @@ function APP_autoload($className){
 
 spl_autoload_register('APP_autoload');
 
+use BoA\Core\Services\ConfService;
 use BoA\Core\Utils\Utils;
+
+if (!empty($__boaMissingSecret)) {
+	$__boaMessage = ConfService::getCoreMessage('missing_app_secret_key');
+	if (PHP_SAPI !== 'cli' && !headers_sent()) {
+		header('HTTP/1.1 500 Internal Server Error');
+		header('Content-Type: text/plain; charset=UTF-8');
+	}
+	die($__boaMessage);
+}
 
 Utils::safeIniSet("session.cookie_httponly", 1);
 

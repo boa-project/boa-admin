@@ -769,6 +769,49 @@ class ConfService
     public static function getMessages($forceRefresh = false){
         return self::getInstance()->getMessagesInst($forceRefresh);
     }
+
+    /**
+     * One core.boa catalog string. Usable before the plugin registry is loaded,
+     * unlike getMessages(), which scans every i18n manifest.
+     * @static
+     * @param string $messageId
+     * @return string
+     */
+    public static function getCoreMessage($messageId){
+        $lang = self::getInstance()->getConfInst("LANGUE");
+        if(empty($lang) && !empty($_SERVER["HTTP_ACCEPT_LANGUAGE"])){
+            if(preg_match('/^([a-zA-Z]{2})(?:[-_]([a-zA-Z]{2}))?/', $_SERVER["HTTP_ACCEPT_LANGUAGE"], $matches)){
+                $primary = strtolower($matches[1]);
+                $region = isset($matches[2]) ? strtolower($matches[2]) : "";
+                $candidates = array();
+                if($region !== ""){
+                    $candidates[] = $primary."-".$region;
+                }
+                $candidates[] = $primary;
+                foreach($candidates as $candidate){
+                    if(is_file(APP_COREI18N_FOLDER."/".$candidate.".php")){
+                        $lang = $candidate;
+                        break;
+                    }
+                }
+            }
+        }
+        if(empty($lang)){
+            $lang = "en";
+        }
+        $file = APP_COREI18N_FOLDER."/".$lang.".php";
+        if(!is_file($file)){
+            $file = APP_COREI18N_FOLDER."/en.php";
+        }
+        $mess = array();
+        if(is_file($file)){
+            include($file);
+        }
+        if(isset($mess[$messageId]) && $mess[$messageId] !== ""){
+            return $mess[$messageId];
+        }
+        return $messageId;
+    }
     /**
      * Get i18n messages
      * @param bool $forceRefresh
