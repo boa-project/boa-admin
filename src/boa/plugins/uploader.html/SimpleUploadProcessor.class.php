@@ -65,15 +65,15 @@ class SimpleUploadProcessor extends Plugin {
 	            $_SERVER['CONTENT_LENGTH'],
 	            $_SERVER['HTTP_X_FILE_NAME']
 	        ) ;
-        if(isSet($_SERVER['HTTP_X_FILE_SIZE'])){
+        if($headersCheck && isSet($_SERVER['HTTP_X_FILE_SIZE'])){
             if($_SERVER['CONTENT_LENGTH'] != $_SERVER['HTTP_X_FILE_SIZE'])  {
                 exit('Warning, wrong headers');
             }
         }
-	    $fileNameH = $_SERVER['HTTP_X_FILE_NAME'];
-	    $fileSizeH = $_SERVER['CONTENT_LENGTH'];
+	    $fileNameH = $_SERVER['HTTP_X_FILE_NAME'] ?? '';
+	    $fileSizeH = $_SERVER['CONTENT_LENGTH'] ?? 0;
 
-        if(dirname($httpVars["dir"]) == "/" && basename($httpVars["dir"]) == $fileNameH){
+        if(dirname(Utils::arrayGet($httpVars, "dir")) == "/" && basename(Utils::arrayGet($httpVars, "dir")) == $fileNameH){
             $httpVars["dir"] = "/";
         }
         Logger::debug("SimpleUpload::preProcess", $httpVars);
@@ -95,18 +95,18 @@ class SimpleUploadProcessor extends Plugin {
 			return false;
 		}
 		Logger::debug("SimpleUploadProc is active");
-		$result = $postProcessData["processor_result"];
+		$result = Utils::arrayGet($postProcessData, "processor_result");
 		
 		if(isSet($httpVars["simple_uploader"])){	
 			print("<html><script language=\"javascript\">\n");
 			if(isSet($result["ERROR"])){
-				$message = $result["ERROR"]["MESSAGE"]." (".$result["ERROR"]["CODE"].")";
+				$message = Utils::arrayGet(Utils::arrayGet($result, "ERROR", array()), "MESSAGE")." (".Utils::arrayGet(Utils::arrayGet($result, "ERROR", array()), "CODE").")";
 				print("\n if(parent.app.actionBar.multi_selector) parent.app.actionBar.multi_selector.submitNext('".str_replace("'", "\'", $message)."');");		
 			}else{
 				print("\n if(parent.app.actionBar.multi_selector) parent.app.actionBar.multi_selector.submitNext();");
-                if($result["CREATED_NODE"]){
+                if(Utils::arrayGet($result, "CREATED_NODE")){
                     $s = '<tree>';
-                    $s .= XMLWriter::writeNodesDiff(array("ADD"=> array($result["CREATED_NODE"])), false);
+                    $s .= XMLWriter::writeNodesDiff(array("ADD"=> array(Utils::arrayGet($result, "CREATED_NODE"))), false);
                     $s.= '</tree>';
                     print("\n var resultString = '".$s."'; var resultXML = parent.parseXml(resultString);");
                     print("\n parent.app.actionBar.parseXmlMessage(resultXML);");
@@ -115,12 +115,12 @@ class SimpleUploadProcessor extends Plugin {
 			print("</script></html>");
 		}else{
 			if(isSet($result["ERROR"])){
-				$message = $result["ERROR"]["MESSAGE"]." (".$result["ERROR"]["CODE"].")";
+				$message = Utils::arrayGet(Utils::arrayGet($result, "ERROR", array()), "MESSAGE")." (".Utils::arrayGet(Utils::arrayGet($result, "ERROR", array()), "CODE").")";
 				exit($message);
 			}else{
                 XMLWriter::header();
                 if(isSet($result["CREATED_NODE"])){
-                    XMLWriter::writeNodesDiff(array("ADD" => array($result["CREATED_NODE"])), true);
+                    XMLWriter::writeNodesDiff(array("ADD" => array(Utils::arrayGet($result, "CREATED_NODE"))), true);
                 }
                 XMLWriter::close();
 				//exit("OK");
@@ -136,9 +136,9 @@ class SimpleUploadProcessor extends Plugin {
 		}
 		$plugin = PluginsService::findPlugin("access", $repository->getAccessType());
 		$streamData = $plugin->detectStreamWrapper(true);		
-		$dir = Utils::decodeSecureMagic($httpVars["dir"]);
+		$dir = Utils::decodeSecureMagic(Utils::arrayGet($httpVars, "dir"));
     	$destStreamURL = $streamData["protocol"]."://".$repository->getId().$dir."/";    	
-		$filename = Utils::decodeSecureMagic($httpVars["file_name"]);
+		$filename = Utils::decodeSecureMagic(Utils::arrayGet($httpVars, "file_name"));
 		$chunks = array();
 		$index = 0;
 		while(isSet($httpVars["chunk_".$index])){

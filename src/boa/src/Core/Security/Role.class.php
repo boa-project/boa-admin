@@ -29,6 +29,8 @@
  */
 namespace BoA\Core\Security;
 
+use BoA\Core\Utils\Utils;
+
 defined('APP_EXEC') or die('Access not allowed');
 
 define('APP_VALUE_CLEAR', "APP_VALUE_CLEAR");
@@ -348,7 +350,7 @@ class Role implements GroupPathProvider
         // check arguments
         // comment out if more performance is necessary (in this case the foreach loop will trigger a warning if the argument is not an array)
         for ($i = 0; $i < $narrays; $i ++) {
-            if (!is_array($arrays[$i])) {
+            if (!is_array(Utils::arrayGet($arrays, $i))) {
                 // also array_merge_recursive returns nothing in this case
                 trigger_error('Argument #' . ($i+1) . ' is not an array - trying to merge array with scalar! Returning null!', E_USER_WARNING);
                 return;

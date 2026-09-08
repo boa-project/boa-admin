@@ -60,7 +60,7 @@ class SharedAccessDriver extends AbstractAccessDriver
 		
 		if($action == "edit"){
 			if(isSet($httpVars["sub_action"])){
-				$action = $httpVars["sub_action"];
+				$action = Utils::arrayGet($httpVars, "sub_action");
 			}
 		}
 		$mess = ConfService::getMessages();
@@ -98,7 +98,7 @@ class SharedAccessDriver extends AbstractAccessDriver
 					XMLWriter::header();
 					XMLWriter::sendFilesListComponentConfig('<columns switchGridMode="filelist"><column messageId="shared.8" attributeName="APP_label" sortType="String"/><column messageId="shared.31" attributeName="description" sortType="String"/></columns>');
 					foreach ($rootNodes as $key => $data){
-						print '<tree text="'.$data["LABEL"].'" icon="'.$data["ICON"].'" filename="/'.$key.'" parentname="/" description="'.$data["DESCRIPTION"].'" />';
+						print '<tree text="'.Utils::arrayGet($data, "LABEL").'" icon="'.Utils::arrayGet($data, "ICON").'" filename="/'.$key.'" parentname="/" description="'.Utils::arrayGet($data, "DESCRIPTION").'" />';
 					}
 					XMLWriter::close();
 				}
@@ -112,7 +112,7 @@ class SharedAccessDriver extends AbstractAccessDriver
 			break;			
 						
 			case "delete" : 
-				$mime = $httpVars["APP_mime"];
+				$mime = Utils::arrayGet($httpVars, "APP_mime");
 				$selection = new UserSelection();
 				$selection->initFromHttpVars();
 				$files = $selection->getFiles();
@@ -199,15 +199,15 @@ class SharedAccessDriver extends AbstractAccessDriver
 			if(isset($publicletData["OWNER_ID"]) && $publicletData["OWNER_ID"] != $userId){
 				continue;
 			}
-			$expired = ($publicletData["EXPIRE_TIME"]!=0?($publicletData["EXPIRE_TIME"]<time()?true:false):false);
-            if(!is_a($publicletData["REPOSITORY"], "Repository")) continue;
-			XMLWriter::renderNode(str_replace(".php", "", basename($file)), "".SystemTextEncoding::toUTF8($publicletData["REPOSITORY"]->getDisplay()).":/".SystemTextEncoding::toUTF8($publicletData["FILE_PATH"]), true, array(
+			$expired = (Utils::arrayGet($publicletData, "EXPIRE_TIME")!=0?(Utils::arrayGet($publicletData, "EXPIRE_TIME")<time()?true:false):false);
+            if(!is_a(Utils::arrayGet($publicletData, "REPOSITORY"), "Repository")) continue;
+			XMLWriter::renderNode(str_replace(".php", "", basename($file)), "".SystemTextEncoding::toUTF8(Utils::arrayGet($publicletData, "REPOSITORY")->getDisplay()).":/".SystemTextEncoding::toUTF8(Utils::arrayGet($publicletData, "FILE_PATH")), true, array(
 				"icon"		=> "html.png",
-				"password" => ($publicletData["PASSWORD"]!=""?$publicletData["PASSWORD"]:"-"), 
-				"expiration" => ($publicletData["EXPIRE_TIME"]!=0?($expired?"[!]":"").date($mess["date_format"], $publicletData["EXPIRE_TIME"]):"-"), 				
-				"download_count" => $publicletData["DOWNLOAD_COUNT"],
-                "download_limit" => ($publicletData["DOWNLOAD_LIMIT"] == 0 ? "-" : $publicletData["DOWNLOAD_LIMIT"] ),
-				"integrity"  => (!$publicletData["SECURITY_MODIFIED"]?$mess["shared.15"]:$mess["shared.16"]),
+				"password" => (Utils::arrayGet($publicletData, "PASSWORD")!=""?Utils::arrayGet($publicletData, "PASSWORD"):"-"), 
+				"expiration" => (Utils::arrayGet($publicletData, "EXPIRE_TIME")!=0?($expired?"[!]":"").date($mess["date_format"], Utils::arrayGet($publicletData, "EXPIRE_TIME")):"-"), 				
+				"download_count" => Utils::arrayGet($publicletData, "DOWNLOAD_COUNT"),
+                "download_limit" => ($publicletData["DOWNLOAD_LIMIT"] == 0 ? "-" : Utils::arrayGet($publicletData, "DOWNLOAD_LIMIT") ),
+				"integrity"  => (!Utils::arrayGet($publicletData, "SECURITY_MODIFIED")?$mess["shared.15"]:$mess["shared.16"]),
 				"download_url" => $downloadBase . "/".basename($file),
 				"APP_mime" => "shared_file")
 			);			

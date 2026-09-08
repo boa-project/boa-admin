@@ -114,14 +114,14 @@ class ImageProcessorTask implements ITask {
         if (!isset($this->_plugin)) return;
         $config = $this->_plugin->getConfigs();
 
-        $this->png = $config["FORMAT_PNG"];
-        $this->gif = $config["FORMAT_GIF"];
-        $this->jpg = $config["FORMAT_JPG"];
-        $this->jpeg = $config["FORMAT_JPEG"];
-        $this->generateThumbs = $config["GENERATE_THUMBNAIL"];
-        $this->thumbnailQuality = $config["THUMBNAIL_QUALITY"];
+        $this->png = Utils::arrayGet($config, "FORMAT_PNG");
+        $this->gif = Utils::arrayGet($config, "FORMAT_GIF");
+        $this->jpg = Utils::arrayGet($config, "FORMAT_JPG");
+        $this->jpeg = Utils::arrayGet($config, "FORMAT_JPEG");
+        $this->generateThumbs = Utils::arrayGet($config, "GENERATE_THUMBNAIL");
+        $this->thumbnailQuality = Utils::arrayGet($config, "THUMBNAIL_QUALITY");
 
-        $entries = explode(",", $config["AVAILABLE_SIZES"]);
+        $entries = explode(",", Utils::arrayGet($config, "AVAILABLE_SIZES"));
         $this->availableSizes = array();
         foreach ($entries as $entry) {
             list($key, $value) = explode(":", $entry);
@@ -187,13 +187,13 @@ class ImageProcessorTask implements ITask {
     private function makePreviewReady($filename, $repo) {
 
         $filename_parts = pathinfo($filename);
-        $relpath = str_replace($repo["path"], "", $filename);
+        $relpath = str_replace(Utils::arrayGet($repo, "path"), "", $filename);
         $parts = explode("/", ltrim($relpath, "/"));
         $root = array_shift($parts);
         $relpath = implode("/", $parts);
 
-        $alternatepath = str_replace("$$__ROOT", $root, $repo["altpath"]) . "/" . $relpath;// . $filename_parts["filename"];
-        $ext = strtolower($filename_parts["extension"]);
+        $alternatepath = str_replace("$$__ROOT", $root, Utils::arrayGet($repo, "altpath")) . "/" . $relpath;// . $filename_parts["filename"];
+        $ext = strtolower($filename_parts["extension"] ?? "");
 
         if (!file_exists($alternatepath)) {
             @mkdir($alternatepath, 0777, true);

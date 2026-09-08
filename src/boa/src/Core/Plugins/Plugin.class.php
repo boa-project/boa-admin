@@ -184,9 +184,9 @@ class Plugin implements \Serializable{
             if($regNode->nodeType != XML_ELEMENT_NODE) continue;
             if($regNode->nodeName == "external_file" && !$this->externalFilesAppended){
                 $data = $this->nodeAttrToHash($regNode);
-                $filename = $data["filename"] OR "";
-                $include = $data["include"] OR "*";
-                $exclude = $data["exclude"] OR "";
+                $filename = $data["filename"] ?? "";
+                $include = $data["include"] ?? "*";
+                $exclude = $data["exclude"] ?? "";
                 if(!is_file(APP_PLUGINS_FOLDER."/".$filename)) continue;
                 if($include != "*") {
                     $include = explode(",", $include);
@@ -386,39 +386,63 @@ class Plugin implements \Serializable{
     }
 
     /**
-     * Serialized all declared attributes and return a serialized representation of this plugin.
+     * PHP 8.1+ serialization protocol. Prefer this over Serializable::{un,}serialize.
      * The XML Manifest is base64 encoded before serialization.
-     * @return string
+     * @return array
      */
-    public function serialize(){
+    public function __serialize(): array {
         if($this->manifestDoc != null){
             $this->manifestXML = base64_encode($this->manifestDoc->saveXML());
         }
         $serialArray = array();
         foreach ($this->serializableAttributes as $attr){
-            $serialArray[$attr] = serialize($this->$attr);
+            $serialArray[$attr] = $this->$attr;
         }
-        return serialize($serialArray);
+        return $serialArray;
     }
 
     /**
-     * Load this plugin from its serialized reprensation. The manifest XML is base64 decoded.
-     * @param $string
+     * Restore plugin state from __serialize() payload. Manifest XML is base64 decoded.
+     * @param array $data
      * @return void
      */
-    public function unserialize($string){
-        $serialArray = unserialize($string);
-        foreach ($serialArray as $key => $value){
-            $this->$key = unserialize($value);
+    public function __unserialize(array $data): void {
+        foreach ($data as $key => $value){
+            $this->$key = $value;
         }
         if($this->manifestXML != NULL){
-            //$this->manifestDoc = DOMDocument::loadXML(base64_decode($this->manifestXML));
             $this->manifestDoc = new \DOMDocument(1.0, "UTF-8");
             $this->manifestDoc->loadXML(base64_decode($this->manifestXML));
             $this->reloadXPath();
             unset($this->manifestXML);
         }
-        //var_dump($this);
+    }
+
+    /**
+     * Legacy Serializable::serialize for older payloads.
+     * The XML Manifest is base64 encoded before serialization.
+     * @return string
+     */
+    public function serialize(){
+        $serialArray = array();
+        foreach ($this->__serialize() as $attr => $value){
+            $serialArray[$attr] = serialize($value);
+        }
+        return serialize($serialArray);
+    }
+
+    /**
+     * Legacy Serializable::unserialize for older payloads.
+     * @param string $string
+     * @return void
+     */
+    public function unserialize($string){
+        $serialArray = unserialize($string);
+        $restored = array();
+        foreach ($serialArray as $key => $value){
+            $restored[$key] = unserialize($value);
+        }
+        $this->__unserialize($restored);
     }
 
     /**

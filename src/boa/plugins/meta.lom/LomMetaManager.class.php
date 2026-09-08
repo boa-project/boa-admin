@@ -96,25 +96,34 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         if (!file_exists($metaPath)) return;
         $content = file_get_contents($metaPath);
         $meta = json_decode($content);
-        $metadata = array("lommetadata" => json_encode($meta->metadata));
-        if ($meta->manifest && ($meta->manifest->type || $meta->manifest->is_a)){
-            $metadata["lomtype"] = $meta->manifest->is_a;
+        if (!is_object($meta)) {
+            return;
+        }
+        $manifest = $meta->manifest ?? null;
+        $metadata = array("lommetadata" => json_encode($meta->metadata ?? new \stdClass()));
+        // New DCOs often have manifest.type but not is_a until first meta save.
+        if (is_object($manifest)) {
+            $lomtype = $manifest->is_a ?? ($manifest->type ?? null);
+            if (!empty($lomtype)) {
+                $metadata["lomtype"] = $lomtype;
+            }
         }
 
-        if (!$isRoot){
-            $metadata["status_id"] = $meta->manifest->status;
-            $metadata["status"] = $this->mess["access_dco.".$meta->manifest->status];
-            $metadata["lastupdated"] = $meta->manifest->lastupdated;
-            if (!empty($meta->manifest->lastpublished)){
-                $metadata["lastpublished"] = $meta->manifest->lastpublished;
+        if (!$isRoot && is_object($manifest)){
+            $statusId = $manifest->status ?? "";
+            $metadata["status_id"] = $statusId;
+            $metadata["status"] = $this->mess["access_dco.".$statusId] ?? $statusId;
+            $metadata["lastupdated"] = $manifest->lastupdated ?? null;
+            if (!empty($manifest->lastpublished)){
+                $metadata["lastpublished"] = $manifest->lastpublished;
             }
             else {
                 $metadata["lastpublished"] = 0;
             }
         }
-        $status = $meta->manifest->status;
+        $status = is_object($manifest) ? ($manifest->status ?? null) : null;
         if ($status == self::PUBLISHED_STATUS){
-            if (empty($meta->manifest->lastpublished) || $meta->manifest->lastpublished < $meta->manifest->lastupdated){
+            if (empty($manifest->lastpublished) || $manifest->lastpublished < ($manifest->lastupdated ?? null)){
                 $overlay = (isset($overlay)?$overlay.",":"")."alert.png";
             }
             else {
@@ -160,7 +169,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         $mess = $this->mess = ConfService::getMessages();
         switch ($action) {
             case 'get_spec_by_id':
-                $this->getSpecById($httpVars["spec_id"]);
+                $this->getSpecById(Utils::arrayGet($httpVars, "spec_id"));
                 break;
             case 'get_specs_list':
                 $this->loadSpecsAsJson();
@@ -169,7 +178,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             case 'mkdco':
                 XMLWriter::header("output");
                 $messtmp="";
-                $dconame=Utils::decodeSecureMagic($httpVars["dirname"], APP_SANITIZE_HTML_STRICT);
+                $dconame=Utils::decodeSecureMagic(Utils::arrayGet($httpVars, "dirname"), APP_SANITIZE_HTML_STRICT);
                 $dconame = substr($dirname, 0, ConfService::getCoreConf("NODENAME_MAX_LENGTH"));
                 $this->filterUserSelectionToHidden(array($dirname));
                 Controller::applyHook("node.before_create", array(new ManifestNode($dir."/".$dirname), -2));
@@ -431,8 +440,8 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
         //$node = new ManifestNode($urlBase);
         $meta = array();
         $this->parseParameters($httpVars, $meta, null, true);
-        $spec_id = $httpVars["spec_id"];
-        $unique = $httpVars["mode"] == 'single';
+        $spec_id = $httpVars["spec_id"] ?? "";
+        $unique = ($httpVars["mode"] ?? "") == 'single';
         $data = $this->createUpdateManifest($currentFile, $meta, $spec_id, $unique);
 
         //Controller::applyHook("node.meta_change", array($node));
@@ -634,7 +643,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             $path = $this->accessDriver->urlBase.$rel_path;
             $path = call_user_func(array($this->accessDriver->wrapperClassName, "getRealFSReference"), $path);
             $rootpath = call_user_func(array($this->accessDriver->wrapperClassName, "getRealFSReference"), $this->accessDriver->urlBase);
-            $recursively = $httpVars["recursively"];
+            $recursively = Utils::arrayGet($httpVars, "recursively");
 
             $pmeta = $this->getParentMeta($path, $rootpath);
 
@@ -649,9 +658,9 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             $data["converted"] = 0;
             foreach($all as $file) {
                 if ($this->assignDroMetadata($file, str_replace($rootpath, '', $file), $pmeta)) {
-                    $data["converted"]++;
+                    $data["converted"] = Utils::arrayGet($data, "converted", 0) + 1;
                 }
-                $data["processed"]++;
+                $data["processed"] = Utils::arrayGet($data, "processed", 0) + 1;
                 $elapsed = (microtime(true) - $start_time) * 1000;
                 if ($elapsed > 1000) {
                     $this->partialJsonOutput($data);
@@ -660,7 +669,7 @@ class LomMetaManager extends Plugin implements DcoSpecProvider {
             }
 
             $data["status"] = "COMPLETED";
-            $data["processed"] = $data["of"];
+            $data["processed"] = Utils::arrayGet($data, "of");
             $this->partialJsonOutput($data);
         }
         catch(\Exception $e)

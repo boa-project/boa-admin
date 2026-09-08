@@ -67,11 +67,11 @@ class AbstractAuthDriver extends Plugin {
         		if(AuthService::suspectBruteForceLogin() && (!isSet($httpVars["captcha_code"]) || !CaptchaProvider::checkCaptchaResult($httpVars["captcha_code"]))){
         			$loggingResult = -4;
         		}else{
-        			$userId = (isSet($httpVars["userid"])?$httpVars["userid"]:null);
-        			$userPass = (isSet($httpVars["password"])?$httpVars["password"]:null);
-        			$rememberMe = ((isSet($httpVars["remember_me"]) && $httpVars["remember_me"] == "true")?true:false);
+        			$userId = (isSet($httpVars["userid"])?$httpVars["userid"] ?? "":null);
+        			$userPass = (isSet($httpVars["password"])?$httpVars["password"] ?? "":null);
+        			$rememberMe = ((isSet($httpVars["remember_me"]) && ($httpVars["remember_me"] ?? "") == "true")?true:false);
         			$cookieLogin = (isSet($httpVars["cookie_login"])?true:false);
-        			$loggingResult = AuthService::logUser($userId, $userPass, false, $cookieLogin, $httpVars["login_seed"]);
+        			$loggingResult = AuthService::logUser($userId, $userPass, false, $cookieLogin, $httpVars["login_seed"] ?? "");
         			if($rememberMe && $loggingResult == 1){
         				$rememberLogin = "notify";
         				$rememberPass = "notify";
@@ -91,7 +91,7 @@ class AbstractAuthDriver extends Plugin {
                        $force = $loggedUser->getPref("force_default_repository");
                        $passId = -1;
                        if(isSet($httpVars["tmp_repository_id"])){
-                           $passId = $httpVars["tmp_repository_id"];
+                           $passId = $httpVars["tmp_repository_id"] ?? "";
                        }else if($force != "" && $loggedUser->canSwitchTo($force) && !isSet($httpVars["tmp_repository_id"])){
                            $passId = $force;
                        }
@@ -123,9 +123,9 @@ class AbstractAuthDriver extends Plugin {
 					print "SUCCESS";
                     break;
 				}
-				$oldPass = $httpVars["old_pass"];
-				$newPass = $httpVars["new_pass"];
-				$passSeed = $httpVars["pass_seed"];
+				$oldPass = $httpVars["old_pass"] ?? "";
+				$newPass = $httpVars["new_pass"] ?? "";
+				$passSeed = $httpVars["pass_seed"] ?? "";
 				if(strlen($newPass) < ConfService::getCoreConf("PASSWORD_MINLENGTH", "auth")){
 					header("Content-Type:text/plain");
 					print "PASS_ERROR";
@@ -145,7 +145,57 @@ class AbstractAuthDriver extends Plugin {
 				header("Content-Type:text/plain");
 				print "SUCCESS";
 				
-			break;					
+			break;
+
+			//------------------------------------
+			//	FORGOT / RESET PASSWORD (email)
+			//------------------------------------
+			case "forgot_password":
+				$loginOrEmail = "";
+				if (isSet($httpVars["login_or_email"])) {
+					$loginOrEmail = $httpVars["login_or_email"] ?? "";
+				} else if (isSet($httpVars["userid"])) {
+					$loginOrEmail = $httpVars["userid"] ?? "";
+				} else if (isSet($httpVars["email"])) {
+					$loginOrEmail = $httpVars["email"] ?? "";
+				}
+				$result = AuthService::requestPasswordReset($loginOrEmail);
+				HTMLWriter::charsetHeader('application/json');
+				print json_encode($result);
+			break;
+
+			case "reset_password":
+				$userId = isSet($httpVars["user"]) ? $httpVars["user"] ?? "" : (isSet($httpVars["userid"]) ? $httpVars["userid"] ?? "" : "");
+				$token = isSet($httpVars["token"]) ? $httpVars["token"] ?? "" : "";
+				$newPass = isSet($httpVars["new_pass"]) ? $httpVars["new_pass"] ?? "" : "";
+				$result = AuthService::completePasswordReset($userId, $token, $newPass);
+				HTMLWriter::charsetHeader('application/json');
+				print json_encode($result);
+			break;
+
+			case "reset_password_form":
+				$userId = htmlspecialchars(isSet($httpVars["user"]) ? $httpVars["user"] ?? "" : "", ENT_QUOTES, 'UTF-8');
+				$token = htmlspecialchars(isSet($httpVars["token"]) ? $httpVars["token"] ?? "" : "", ENT_QUOTES, 'UTF-8');
+				$minLen = intval(ConfService::getCoreConf("PASSWORD_MINLENGTH", "auth"));
+				if ($minLen < 1) {
+					$minLen = 8;
+				}
+				HTMLWriter::charsetHeader('text/html');
+				echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reset password</title>';
+				echo '<style>body{font-family:sans-serif;max-width:28em;margin:3em auto;padding:0 1em;}label{display:block;margin:.8em 0 .2em;}input{width:100%;padding:.4em;box-sizing:border-box;}button{margin-top:1em;padding:.5em 1em;}#msg{margin-top:1em;}</style>';
+				echo '</head><body><h1>Reset password</h1>';
+				echo '<form id="reset_form" method="post" action="'.APP_SERVER_ACCESS.'">';
+				echo '<input type="hidden" name="get_action" value="reset_password"/>';
+				echo '<input type="hidden" name="user" value="'.$userId.'"/>';
+				echo '<input type="hidden" name="token" value="'.$token.'"/>';
+				echo '<label for="new_pass">New password (min '.$minLen.' chars)</label>';
+				echo '<input id="new_pass" name="new_pass" type="password" autocomplete="new-password" required minlength="'.$minLen.'"/>';
+				echo '<label for="new_pass2">Confirm password</label>';
+				echo '<input id="new_pass2" type="password" autocomplete="new-password" required minlength="'.$minLen.'"/>';
+				echo '<button type="submit">Set password</button></form><div id="msg"></div>';
+				echo '<script>(function(){var f=document.getElementById("reset_form");f.addEventListener("submit",function(e){e.preventDefault();var p=document.getElementById("new_pass").value,p2=document.getElementById("new_pass2").value,m=document.getElementById("msg");if(p!==p2){m.textContent="Passwords do not match.";return;}var fd=new FormData(f);fetch(f.action,{method:"POST",body:fd,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(j){m.textContent=j.message||(j.ok?"Done.":"Error");if(j.ok){f.style.display="none";setTimeout(function(){location.href="'.APP_SERVER_ACCESS.'";},1500);}}).catch(function(){m.textContent="Request failed.";});});})();</script>';
+				echo '</body></html>';
+			break;
 
             case "logout" :
 
@@ -244,7 +294,7 @@ class AbstractAuthDriver extends Plugin {
     function supportsUsersPagination(){
         return false;
     }
-    function listUsersPaginated($baseGroup = "/", $regexp, $offset, $limit){
+    function listUsersPaginated($baseGroup, $regexp, $offset = -1, $limit = -1){
         return $this->listUsers($baseGroup);
     }
     function getUsersCount($baseGroup = "/", $regexp = ""){

@@ -122,9 +122,9 @@ class HTMLWriter
      * @return void
      */
     static function internetExplorerMainDocumentHeader(){
-        if(strstr($_SERVER["HTTP_USER_AGENT"], "MSIE 9.")){
+        if(strstr(($_SERVER["HTTP_USER_AGENT"] ?? ""), "MSIE 9.")){
             header("X-UA-Compatible: IE=9");
-        }else if(strstr($_SERVER["HTTP_USER_AGENT"], "MSIE 10.")){
+        }else if(strstr(($_SERVER["HTTP_USER_AGENT"] ?? ""), "MSIE 10.")){
             header("X-UA-Compatible: IE=Edge,chrome=1");
         }
     }
@@ -154,9 +154,9 @@ class HTMLWriter
      * @param $errorMessage
      * @return
      */
-    static function javascriptErrorHandler($errorType, $errorMessage){    	
-    	// Handle "@" case!
-    	if(error_reporting() == 0) return ;
+    static function javascriptErrorHandler($errorType, $errorMessage, $errorFile = null, $errorLine = null){
+    	// PHP 8+: @-suppressed warnings no longer report error_reporting() === 0.
+    	if(!(error_reporting() & $errorType)) return true;
     	restore_error_handler();    	
     	die("<script language='javascript'>parent.app.displayMessage('ERROR', '".str_replace("'", "\'", $errorMessage)."');</script>");
     }
@@ -170,7 +170,7 @@ class HTMLWriter
      */
     static function generateAttachmentsHeader(&$attachmentName, $dataSize, $isFile=true, $gzip=false){
 
-        if(preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT']) || preg_match('/ WebKit /',$_SERVER['HTTP_USER_AGENT'])){
+        if(preg_match('/ MSIE /',($_SERVER['HTTP_USER_AGENT'] ?? '')) || preg_match('/ WebKit /',($_SERVER['HTTP_USER_AGENT'] ?? ''))){
      		$attachmentName = str_replace("+", " ", urlencode(SystemTextEncoding::toUTF8($attachmentName)));
      	}
 
@@ -188,14 +188,14 @@ class HTMLWriter
         header("Expires: 0");
         header("Cache-Control: no-cache, must-revalidate");
         header("Pragma: no-cache");
-        if (preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT']))
+        if (preg_match('/ MSIE /',($_SERVER['HTTP_USER_AGENT'] ?? '')))
         {
             header("Cache-Control: max_age=0");
             header("Pragma: public");
         }
 
         // IE8 is dumb
-        if (preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT']))
+        if (preg_match('/ MSIE /',($_SERVER['HTTP_USER_AGENT'] ?? '')))
         {
             header("Pragma: public");
             header("Expires: 0");
@@ -205,7 +205,7 @@ class HTMLWriter
 
         // For SSL websites there is a bug with IE see article KB 323308
         // therefore we must reset the Cache-Control and Pragma Header
-        if (ConfService::getConf("USE_HTTPS")==1 && preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT']))
+        if (ConfService::getConf("USE_HTTPS")==1 && preg_match('/ MSIE /',($_SERVER['HTTP_USER_AGENT'] ?? '')))
         {
             header("Cache-Control:");
             header("Pragma:");
@@ -218,7 +218,7 @@ class HTMLWriter
         header("Content-Type: " . $mimeType . "; name=\"" . $attachName . "\"");
         header("Content-Disposition: inline; filename=\"" . $attachName . "\"");
         // changed header for IE 7 & 8
-        if (preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT']))
+        if (preg_match('/ MSIE /',($_SERVER['HTTP_USER_AGENT'] ?? '')))
         {
             header("Pragma: public");
             header("Expires: 0");
@@ -230,7 +230,7 @@ class HTMLWriter
         header("Content-Length: " . $fileSize);
 
         // Neccessary for IE 8 and xx
-        if (ConfService::getConf("USE_HTTPS")==1 && preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT']))
+        if (ConfService::getConf("USE_HTTPS")==1 && preg_match('/ MSIE /',($_SERVER['HTTP_USER_AGENT'] ?? '')))
         {
             header("Cache-Control:");
             header("Pragma:");

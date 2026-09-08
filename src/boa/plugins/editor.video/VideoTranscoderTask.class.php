@@ -116,10 +116,10 @@ class VideoTranscoderTask implements ITask {
         if (!isset($this->_plugin)) return;
         $config = $this->_plugin->getConfigs();
 
-        $this->mp4 = $config["STREAMING_MP4"];
-        $this->webm = $config["STREAMING_WEBM"];
-        $this->ogv = $config["STREAMING_OGV"];
-        $entries = explode(",", $config["STREAMING_SIZES"]);
+        $this->mp4 = Utils::arrayGet($config, "STREAMING_MP4");
+        $this->webm = Utils::arrayGet($config, "STREAMING_WEBM");
+        $this->ogv = Utils::arrayGet($config, "STREAMING_OGV");
+        $entries = explode(",", Utils::arrayGet($config, "STREAMING_SIZES"));
         $this->availableSizes = array();
         foreach ($entries as $entry) {
             list($key, $value) = explode(":", $entry);
@@ -133,8 +133,8 @@ class VideoTranscoderTask implements ITask {
             }
         }
 
-        $this->generateThumbs = $config["MISC_THUMBNAILS"];
-        $this->generatePreview = $config["MISC_PREVIEW"];
+        $this->generateThumbs = Utils::arrayGet($config, "MISC_THUMBNAILS");
+        $this->generatePreview = Utils::arrayGet($config, "MISC_PREVIEW");
     }
 
     /**
@@ -187,13 +187,13 @@ class VideoTranscoderTask implements ITask {
     private function makeStreamingReady($filename, $repo) {
 
         $filename_parts = pathinfo($filename);
-        $relpath = str_replace($repo["path"], "", $filename);
+        $relpath = str_replace(Utils::arrayGet($repo, "path"), "", $filename);
         $parts = explode("/", ltrim($relpath, "/"));
         $root = array_shift($parts);
         $relpath = implode("/", $parts);
 
-        $alternatepath = str_replace("$$__ROOT", $root, $repo["altpath"]) . "/" . $relpath;// . $filename_parts["filename"];
-        $ext = strtolower($filename_parts["extension"]);
+        $alternatepath = str_replace("$$__ROOT", $root, Utils::arrayGet($repo, "altpath")) . "/" . $relpath;// . $filename_parts["filename"];
+        $ext = strtolower($filename_parts["extension"] ?? "");
 
         if (!file_exists($alternatepath)) {
             @mkdir($alternatepath, 0777, true);

@@ -37,6 +37,7 @@ use BoA\Core\Services\AuthService;
 use BoA\Core\Services\ConfService;
 use BoA\Core\Services\PluginsService;
 use BoA\Core\Utils\Filters\VarsFilter;
+use BoA\Core\Utils\Utils;
 use BoA\Core\Xml\ManifestNode;
 use BoA\Plugins\Core\Log\Logger;
 
@@ -69,13 +70,15 @@ class AbstractAccessDriver extends Plugin {
     function accessPreprocess($actionName, &$httpVars, &$filesVar)
     {
         if($actionName == "apply_check_hook"){
-            if(!in_array($httpVars["hook_name"], array("before_create", "before_path_change", "before_change"))){
+            $hookName = $httpVars["hook_name"] ?? "";
+            $hookArg = $httpVars["hook_arg"] ?? null;
+            if(!in_array($hookName, array("before_create", "before_path_change", "before_change"))){
                 return;
             }
             $selection = new UserSelection();
             $selection->initFromHttpVars($httpVars);
             $node = $selection->getUniqueNode($this);
-            Controller::applyHook("node.".$httpVars["hook_name"], array($node, $httpVars["hook_arg"]));
+            Controller::applyHook("node.".$hookName, array($node, $hookArg));
         }
         if($actionName == "ls"){
             // UPWARD COMPATIBILTY
@@ -136,7 +139,7 @@ class AbstractAccessDriver extends Plugin {
         $plugin = PluginsService::findPlugin("access", $accessType);
         $origWrapperData = $plugin->detectStreamWrapper(true);
         $origStreamURL = $origWrapperData["protocol"]."://$repositoryId";
-        $destRepoId = $httpVars["dest_repository_id"];
+        $destRepoId = Utils::arrayGet($httpVars, "dest_repository_id");
         $destRepoObject = ConfService::getRepositoryById($destRepoId);
         $destRepoAccess = $destRepoObject->getAccessType();
         $plugin = PluginsService::findPlugin("access", $destRepoAccess);
@@ -167,7 +170,7 @@ class AbstractAccessDriver extends Plugin {
             if(isSet($httpVars["moving_files"])){
                 $touch = filemtime($origFile);
             }
-            $destFile = $destStreamURL.SystemTextEncoding::fromUTF8($httpVars["dest"])."/".$bName;
+            $destFile = $destStreamURL.SystemTextEncoding::fromUTF8(Utils::arrayGet($httpVars, "dest"))."/".$bName;
             Controller::applyHook("node.before_create", array($destFile));
             if(!is_file($origFile)){
                 throw new Exception("Cannot find $origFile");

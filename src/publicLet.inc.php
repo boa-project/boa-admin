@@ -33,6 +33,8 @@ require_once("base.conf.php");
 
 use BoA\Core\Services\ConfService;
 use BoA\Core\Services\PluginsService;
+use BoA\Core\Security\Crypto;
+use BoA\Plugins\Action\Share\ShareCenter;
 
 $pServ = PluginsService::getInstance();
 ConfService::init();
@@ -44,3 +46,13 @@ $confDriver = ConfService::getConfStorageImpl();
 
 require_once($confDriver->getUserClassFileName());
 require_once(APP_PLUGINS_FOLDER."/action.share/ShareCenter.class.php");
+
+// Publiclets call Crypto::decrypt and bare ShareCenter::* after this include.
+// APP_autoload (from bootstrap_context) resolves Crypto.class.php; require explicitly
+// if autoload missed, and alias ShareCenter for generated publiclet scripts.
+if (!class_exists(Crypto::class, false)) {
+    require_once APP_BIN_FOLDER.'/Core/Security/Crypto.class.php';
+}
+if (!class_exists('ShareCenter', false)) {
+    class_alias(ShareCenter::class, 'ShareCenter');
+}

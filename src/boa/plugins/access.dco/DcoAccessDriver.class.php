@@ -42,6 +42,7 @@ use BoA\Core\Services\AuthService;
 use BoA\Core\Services\ConfService;
 use BoA\Core\Services\PluginsService;
 use BoA\Core\Utils\Utils;
+use BoA\Core\Utils\ZipHelper;
 use BoA\Core\Utils\Text\SystemTextEncoding;
 use BoA\Core\Xml\ManifestNode;
 use BoA\Plugins\Core\Access\AbstractAccessDriver;
@@ -199,7 +200,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         if(!isSet($this->actions[$action])) return;
         parent::accessPreprocess($action, $httpVars, $fileVars);
         $selection = new UserSelection();
-        $dir = $httpVars["dir"] OR "";
+        $dir = $httpVars["dir"] ?? "";
         if($this->wrapperClassName == self::DEFAULT_ACCESSWRAPPER_CLASSNAME){
             $dir = DcoAccessWrapper::patchPathForBaseDir($dir);
         }
@@ -273,7 +274,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
 
             case "prepare_chunk_dl" :
 
-                $chunkCount = intval($httpVars["chunk_count"]);
+                $chunkCount = intval($httpVars["chunk_count"] ?? 0);
                 $fileId = $this->urlBase.$selection->getUniqueFile();
                 $sessionKey = "chunk_file_".md5($fileId.time());
                 $totalSize = $this->filesystemFileSize($fileId);
@@ -297,8 +298,11 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
 
             case "download_chunk" :
 
-                $chunkIndex = intval($httpVars["chunk_index"]);
-                $chunkKey = $httpVars["file_id"];
+                $chunkIndex = intval($httpVars["chunk_index"] ?? 0);
+                $chunkKey = $httpVars["file_id"] ?? "";
+                if($chunkKey === "" || !isset($_SESSION[$chunkKey]) || !is_array($_SESSION[$chunkKey])){
+                    throw new \Exception("Invalid chunk download session");
+                }
                 $sessData = $_SESSION[$chunkKey];
                 $realFile = $sessData["file"];
                 $chunkSize = $sessData["chunk_size"];
@@ -318,7 +322,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                     // Make a temp zip and send it as download
                     $loggedUser = AuthService::getLoggedUser();
                     if(isSet($httpVars["archive_name"])){
-                        $localName = Utils::decodeSecureMagic($httpVars["archive_name"]);
+                        $localName = Utils::decodeSecureMagic($httpVars["archive_name"] ?? "");
                         $this->filterUserSelectionToHidden(array($localName));
                     }else{
                         $localName = (basename($dir)==""?"Files":basename($dir)).".zip";
@@ -377,10 +381,10 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             case "put_content":
                 if(!isset($httpVars["content"])) break;
                 // Load "code" variable directly from POST array, do not "securePath" or "sanitize"...
-                $code = $httpVars["content"];
-                $file = $selection->getUniqueFile($httpVars["file"]);
+                $code = $httpVars["content"] ?? "";
+                $file = $selection->getUniqueFile($httpVars["file"] ?? "");
                 Logger::logAction("Online Edition", array("file"=>$file));
-                if(isSet($httpVars["encode"]) && $httpVars["encode"] == "base64"){
+                if(isSet($httpVars["encode"]) && ($httpVars["encode"] ?? "") == "base64"){
                     $code = base64_decode($code);
                 }else{
                     $code = SystemTextEncoding::magicDequote($code);
@@ -422,8 +426,8 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                     throw new ApplicationException("", 113);
                 }
                 $success = $error = array();
-                $dest = Utils::decodeSecureMagic($httpVars["dest"]);
-                $this->filterUserSelectionToHidden(array($httpVars["dest"]));
+                $dest = Utils::decodeSecureMagic($httpVars["dest"] ?? "");
+                $this->filterUserSelectionToHidden(array($httpVars["dest"] ?? ""));
                 if($selection->inZip()){
                     // Set action to copy anycase (cannot move from the zip).
                     $action = "copy";
@@ -458,7 +462,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                     $nodesDiffs["ADD"][] = $newNode;
                     if($action == "move") $nodesDiffs["REMOVE"][] = $selectedPath;
                 }
-                if(!(RecycleBinManager::getRelativeRecycle() ==$dest && $this->driverConf["HIDE_RECYCLE"] == true)){
+                if(!(RecycleBinManager::getRelativeRecycle() ==$dest && Utils::arrayGet($this->driverConf, "HIDE_RECYCLE") == true)){
                     //$reloadDataNode = $dest;
                 }
 
@@ -501,11 +505,11 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             //------------------------------------
             case "rename";
 
-                $file = Utils::decodeSecureMagic($httpVars["file"]);
-                $filename_new = Utils::decodeSecureMagic($httpVars["filename_new"]);
+                $file = Utils::decodeSecureMagic($httpVars["file"] ?? "");
+                $filename_new = Utils::decodeSecureMagic($httpVars["filename_new"] ?? "");
                 $dest = null;
                 if(isSet($httpVars["dest"])){
-                    $dest = Utils::decodeSecureMagic($httpVars["dest"]);
+                    $dest = Utils::decodeSecureMagic($httpVars["dest"] ?? "");
                     $filename_new = "";
                 }
                 $this->filterUserSelectionToHidden(array($filename_new));
@@ -542,19 +546,19 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 $manifestNode = $this->getExplorer()->getDcoManifestNode($urlBase."/.manifest");
 
                 $manifest = new \stdClass();
-                $manifest->title = $meta["dcotitle"];
-                $manifest->type = $meta["dcotype"];
-                $contype = $meta["dcocontype"];
+                $manifest->title = Utils::arrayGet($meta, "dcotitle");
+                $manifest->type = Utils::arrayGet($meta, "dcotype");
+                $contype = Utils::arrayGet($meta, "dcocontype");
                 $manifest->conexion_type = $contype["group_switch_value"];
                 $manifest->url = $manifest->conexion_type == 'external'? $contype["externalurl"] : "";
-                $manifest->version = $meta["version"];
-                $manifest->author = $meta["author"];
-                $manifest->status = $meta["status"];
-                $manifest->id = $meta["dcoid"];
-                $manifest->customicon = $meta["customicon"];
+                $manifest->version = Utils::arrayGet($meta, "version");
+                $manifest->author = Utils::arrayGet($meta, "author");
+                $manifest->status = Utils::arrayGet($meta, "status");
+                $manifest->id = Utils::arrayGet($meta, "dcoid");
+                $manifest->customicon = Utils::arrayGet($meta, "customicon");
                 $manifest->lastupdated = date('c'); //ISO format
                 $this->updateManifest($urlBase, $manifest);
-                $this->updateCustomIcon($urlBase, $manifestNode->customicon, $meta["customicon"]);
+                $this->updateCustomIcon($urlBase, $manifestNode->customicon, Utils::arrayGet($meta, "customicon"));
                 $manifestNode = $this->getExplorer()->getDcoManifestNode($urlBase."/.manifest"); //Reload the node
                 if(!isSet($nodesDiffs)) $nodesDiffs = $this->getNodesDiffArray();
                 $nodesDiffs["UPDATE"][$currentFile] = $manifestNode;
@@ -563,7 +567,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 break;
             case "mkdco":
                 $messtmp="";
-                $id = $this->getUniqueId($dir); //$httpVars["dcotitle"]
+                $id = $this->getUniqueId($dir); //$httpVars["dcotitle"] ?? ""
                 $dirname=$id;// Utils::decodeSecureMagic($id, APP_SANITIZE_HTML_STRICT);
                 $dirname = substr($dirname, 0, ConfService::getCoreConf("NODENAME_MAX_LENGTH"));
                 $this->filterUserSelectionToHidden(array($dirname));
@@ -584,25 +588,25 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 //Create the Manifest file
                 Utils::parseStandardFormParameters($httpVars, $meta, null, "DCO_", array());
                 $manifest = new \stdClass();
-                $manifest->title = $meta["dcotitle"];
-                $manifest->type = $meta["dcotype"];
-                $contype = $meta["dcocontype"];
+                $manifest->title = Utils::arrayGet($meta, "dcotitle");
+                $manifest->type = Utils::arrayGet($meta, "dcotype");
+                $contype = Utils::arrayGet($meta, "dcocontype");
                 $manifest->conexion_type = $contype["group_switch_value"];
                 $manifest->author = AuthService::getLoggedUser()->id;
                 $manifest->url = $manifest->conexion_type == 'external'? $contype["externalurl"] : "";
-                $manifest->status = $meta["status"];
+                $manifest->status = Utils::arrayGet($meta, "status");
                 $manifest->version = "1.0";
                 $manifest->id = $id;
-                $manifest->customicon = $meta["customicon"];
+                $manifest->customicon = Utils::arrayGet($meta, "customicon");
                 $metadata = array();
                 if ($this->metaPlugin != null){
-                    $metadata = $this->metaPlugin->initMetaFromSpec($dir."/".$dirname, $meta["dcotype"]);
+                    $metadata = $this->metaPlugin->initMetaFromSpec($dir."/".$dirname, Utils::arrayGet($meta, "dcotype"));
                 }
                 $json = new \stdClass();
                 $json->manifest = $manifest;
                 $json->metadata = $metadata;
                 $this->createManifest($dir."/".$dirname, $json);
-                $this->updateCustomIcon($this->urlBase."/".$dirname, null, $meta["customicon"]);
+                $this->updateCustomIcon($this->urlBase."/".$dirname, null, Utils::arrayGet($meta, "customicon"));
 
                 $messtmp.=$mess["access_dco.create.success.pre"]." '".SystemTextEncoding::toUTF8($manifest->title)."' ".$mess["access_dco.create.success.pos"]." ".$id;
                 //if($dir=="") {$messtmp.="/";} else {$messtmp.= SystemTextEncoding::toUTF8($dir);}
@@ -622,10 +626,10 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             case "mkdir";
 
                 $messtmp="";
-                $dirname=Utils::decodeSecureMagic($httpVars["dirname"], APP_SANITIZE_HTML_STRICT);
+                $dirname=Utils::decodeSecureMagic($httpVars["dirname"] ?? "", APP_SANITIZE_HTML_STRICT);
                 $dirname = substr($dirname, 0, ConfService::getCoreConf("NODENAME_MAX_LENGTH"));
                 $this->filterUserSelectionToHidden(array($dirname));
-                Controller::applyHook("node.before_create", array(new ManifestNode($dir."/".$dirname), -2));
+                Controller::applyHook("node.before_create", array(new ManifestNode($this->urlBase.$dir."/".$dirname), -2));
                 $error = $this->mkDir($dir, $dirname);
                 if(isSet($error)){
                     throw new ApplicationException($error);
@@ -648,12 +652,12 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             case "mkfile";
 
                 $messtmp="";
-                $filename=Utils::decodeSecureMagic($httpVars["filename"], APP_SANITIZE_HTML_STRICT);
+                $filename=Utils::decodeSecureMagic($httpVars["filename"] ?? "", APP_SANITIZE_HTML_STRICT);
                 $filename = substr($filename, 0, ConfService::getCoreConf("NODENAME_MAX_LENGTH"));
                 $this->filterUserSelectionToHidden(array($filename));
                 $content = "";
                 if(isSet($httpVars["content"])){
-                    $content = $httpVars["content"];
+                    $content = $httpVars["content"] ?? "";
                 }
                 $error = $this->createEmptyFile($dir, $filename, $content);
                 if(isSet($error)){
@@ -679,9 +683,9 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 $messtmp="";
                 $files = $selection->getFiles();
                 $changedFiles = array();
-                $chmod_value = $httpVars["chmod_value"];
-                $recursive = $httpVars["recursive"];
-                $recur_apply_to = $httpVars["recur_apply_to"];
+                $chmod_value = $httpVars["chmod_value"] ?? "";
+                $recursive = $httpVars["recursive"] ?? "";
+                $recur_apply_to = $httpVars["recur_apply_to"] ?? "";
                 foreach ($files as $fileName){
                     $error = $this->chmod($fileName, $chmod_value, ($recursive=="on"), ($recursive=="on"?$recur_apply_to:"both"), $changedFiles);
                 }
@@ -729,7 +733,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                     }
                     $userfile_name=Utils::sanitize(SystemTextEncoding::fromPostedFileName($userfile_name), APP_SANITIZE_HTML_STRICT);
                     if(isSet($httpVars["urlencoded_filename"])){
-                        $userfile_name = Utils::sanitize(SystemTextEncoding::fromUTF8(urldecode($httpVars["urlencoded_filename"])), APP_SANITIZE_HTML_STRICT);
+                        $userfile_name = Utils::sanitize(SystemTextEncoding::fromUTF8(urldecode($httpVars["urlencoded_filename"] ?? "")), APP_SANITIZE_HTML_STRICT);
                     }
                     Logger::debug("User filename ".$userfile_name);
                     $userfile_name = substr($userfile_name, 0, ConfService::getCoreConf("NODENAME_MAX_LENGTH"));
@@ -781,7 +785,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                         }
                     }
                     if(isSet($httpVars["appendto_urlencoded_part"])){
-                        $appendTo = Utils::sanitize(SystemTextEncoding::fromUTF8(urldecode($httpVars["appendto_urlencoded_part"])), APP_SANITIZE_HTML_STRICT);
+                        $appendTo = Utils::sanitize(SystemTextEncoding::fromUTF8(urldecode($httpVars["appendto_urlencoded_part"] ?? "")), APP_SANITIZE_HTML_STRICT);
                         if(file_exists($destination ."/" . $appendTo)){
                             Logger::debug("Should copy stream from $userfile_name to $appendTo");
                             $partO = fopen($destination."/".$userfile_name, "r");
@@ -825,12 +829,12 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 $toNode = null;
                 $copyOrMove = false;
                 if(isSet($httpVars["from"])) {
-                    $fromNode = new ManifestNode($this->urlBase.Utils::decodeSecureMagic($httpVars["from"]));
+                    $fromNode = new ManifestNode($this->urlBase.Utils::decodeSecureMagic($httpVars["from"] ?? ""));
                 }
                 if(isSet($httpVars["to"])) {
-                    $toNode = new ManifestNode($this->urlBase.Utils::decodeSecureMagic($httpVars["to"]));
+                    $toNode = new ManifestNode($this->urlBase.Utils::decodeSecureMagic($httpVars["to"] ?? ""));
                 }
-                if(isSet($httpVars["copy"]) && $httpVars["copy"] == "true"){
+                if(isSet($httpVars["copy"]) && ($httpVars["copy"] ?? "") == "true"){
                     $copyOrMove = true;
                 }
                 Controller::applyHook("node.change", array($fromNode, $toNode, $copyOrMove));
@@ -849,14 +853,14 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             //------------------------------------
             case "get_custom_dco_icon" :
                 if(isSet($httpVars["tmp_file"])){
-                    $file = Utils::getAppTmpDir()."/".Utils::securePath($httpVars["tmp_file"]);
+                    $file = Utils::getAppTmpDir()."/".Utils::securePath($httpVars["tmp_file"] ?? "");
                     if(isSet($file)){
                         header("Content-Type:image/png");
                         readfile($file);
                     }
                 }else if(isSet($httpVars["binary_id"])){
 
-                    $this->loadBinary(array(), $httpVars["binary_id"]);
+                    $this->loadBinary(array(), $httpVars["binary_id"] ?? "");
                 }
             break;
 
@@ -900,7 +904,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             //  SET OBJECT ENTRY POINT
             //------------------------------------
             case 'set_entry_point':
-                print($this->setObjectEntryPoint($httpVars["path"]));
+                print($this->setObjectEntryPoint($httpVars["path"] ?? ""));
                 break;
         }
 
@@ -1000,7 +1004,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             }
         }
 
-        if (!$metaData["readonly"]){
+        if (!($metaData["readonly"] ?? false)){
             $fPerms = @fileperms($node->getUrl());
             if($fPerms !== false){
                 $fPerms = substr(decoct( $fPerms ), ($isLeaf?2:1));
@@ -1018,17 +1022,17 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         if($isLeaf){
             $metaData["bytesize"] = $this->filesystemFileSize($node->getUrl());
         }
-        $metaData["filesize"] = Utils::roundSize($metaData["bytesize"]);
+        $metaData["filesize"] = Utils::roundSize(Utils::arrayGet($metaData, "bytesize"));
         if(Utils::isBrowsableArchive($nodeName)){
             $metaData["APP_mime"] = "browsable_archive";
         }
 
         if($details == "minimal"){
             $miniMeta = array(
-                "is_file" => $metaData["is_file"],
-                "filename" => $metaData["filename"],
-                "bytesize" => $metaData["bytesize"],
-                "modiftime" => $metaData["modiftime"],
+                "is_file" => Utils::arrayGet($metaData, "is_file"),
+                "filename" => Utils::arrayGet($metaData, "filename"),
+                "bytesize" => Utils::arrayGet($metaData, "bytesize"),
+                "modiftime" => Utils::arrayGet($metaData, "modiftime"),
             );
             $node->mergeMetadata($miniMeta);
         }else{
@@ -1043,7 +1047,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
     function filterUserSelectionToHidden($files){
         foreach ($files as $file){
             $file = basename($file);
-            if(Utils::isHidden($file) && !$this->driverConf["SHOW_HIDDEN_FILES"]){
+            if(Utils::isHidden($file) && !Utils::arrayGet($this->driverConf, "SHOW_HIDDEN_FILES")){
                 throw new \Exception("Forbidden");
             }
             if($this->filterFile($file) || $this->filterFolder($file)){
@@ -1054,7 +1058,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
 
     function filterNodeName($nodePath, $nodeName, &$isLeaf, $lsOptions){
         $isLeaf = (is_file($nodePath."/".$nodeName) || Utils::isBrowsableArchive($nodeName));
-        if(Utils::isHidden($nodeName) && !$this->driverConf["SHOW_HIDDEN_FILES"]){
+        if(Utils::isHidden($nodeName) && !Utils::arrayGet($this->driverConf, "SHOW_HIDDEN_FILES")){
             return false;
         }
         $nodeType = "d";
@@ -1062,7 +1066,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             if(Utils::isBrowsableArchive($nodeName)) $nodeType = "z";
             else $nodeType = "f";
         }
-        if(!$lsOptions[$nodeType]) return false;
+        if(!$lsOptions || !Utils::arrayGet($lsOptions, $nodeType)) return false;
         if($nodeType == "d"){
             if(RecycleBinManager::recycleEnabled()
                 && $nodePath."/".$nodeName == RecycleBinManager::getRecyclePath()){
@@ -1083,19 +1087,19 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
     function filterFile($fileName){
         $pathParts = pathinfo($fileName);
         if(array_key_exists("HIDE_FILENAMES", $this->driverConf) && !empty($this->driverConf["HIDE_FILENAMES"])){
-            if(!is_array($this->driverConf["HIDE_FILENAMES"])) {
-                $this->driverConf["HIDE_FILENAMES"] = explode(",",$this->driverConf["HIDE_FILENAMES"]);
+            if(!is_array(Utils::arrayGet($this->driverConf, "HIDE_FILENAMES"))) {
+                $this->driverConf["HIDE_FILENAMES"] = explode(",",Utils::arrayGet($this->driverConf, "HIDE_FILENAMES"));
             }
-            foreach ($this->driverConf["HIDE_FILENAMES"] as $search){
+            foreach(Utils::arrayGet($this->driverConf, "HIDE_FILENAMES", array()) as $search){
                 if(strcasecmp($search, $pathParts["basename"]) == 0) return true;
             }
         }
         if(array_key_exists("HIDE_EXTENSIONS", $this->driverConf) && !empty($this->driverConf["HIDE_EXTENSIONS"])){
-            if(!is_array($this->driverConf["HIDE_EXTENSIONS"])) {
-                $this->driverConf["HIDE_EXTENSIONS"] = explode(",",$this->driverConf["HIDE_EXTENSIONS"]);
+            if(!is_array(Utils::arrayGet($this->driverConf, "HIDE_EXTENSIONS"))) {
+                $this->driverConf["HIDE_EXTENSIONS"] = explode(",",Utils::arrayGet($this->driverConf, "HIDE_EXTENSIONS"));
             }
-            foreach ($this->driverConf["HIDE_EXTENSIONS"] as $search){
-                if(strcasecmp($search, $pathParts["extension"]) == 0) return true;
+            foreach(Utils::arrayGet($this->driverConf, "HIDE_EXTENSIONS", array()) as $search){
+                if(strcasecmp($search, $pathParts["extension"] ?? "") == 0) return true;
             }
         }
         return false;
@@ -1103,10 +1107,10 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
 
     function filterFolder($folderName, $compare = "equals"){
         if(array_key_exists("HIDE_FOLDERS", $this->driverConf) && !empty($this->driverConf["HIDE_FOLDERS"])){
-            if(!is_array($this->driverConf["HIDE_FOLDERS"])) {
-                $this->driverConf["HIDE_FOLDERS"] = explode(",",$this->driverConf["HIDE_FOLDERS"]);
+            if(!is_array(Utils::arrayGet($this->driverConf, "HIDE_FOLDERS"))) {
+                $this->driverConf["HIDE_FOLDERS"] = explode(",",Utils::arrayGet($this->driverConf, "HIDE_FOLDERS"));
             }
-            foreach ($this->driverConf["HIDE_FOLDERS"] as $search){
+            foreach(Utils::arrayGet($this->driverConf, "HIDE_FOLDERS", array()) as $search){
                 if($compare == "equals" && strcasecmp($search, $folderName) == 0) return true;
                 if($compare == "contains" && strpos($folderName, "/".$search) !== false) return true;
             }
@@ -1151,7 +1155,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         }else{
             $size = $byteLength;
         }
-        if($gzip && ($size > ConfService::getCoreConf("GZIP_LIMIT") || !function_exists("gzencode") || @strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') === FALSE)){
+        if($gzip && ($size > ConfService::getCoreConf("GZIP_LIMIT") || !function_exists("gzencode") || strpos($_SERVER['HTTP_ACCEPT_ENCODING'] ?? '', 'gzip') === FALSE)){
             $gzip = false; // disable gzip
         }
 
@@ -1169,7 +1173,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         else
         {
             /*
-            if(preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT']) || preg_match('/ WebKit /',$_SERVER['HTTP_USER_AGENT'])){
+            if(preg_match('/ MSIE /',$_SERVER['HTTP_USER_AGENT'] ?? '') || preg_match('/ WebKit /',$_SERVER['HTTP_USER_AGENT'] ?? '')){
                 $localName = str_replace("+", " ", urlencode(SystemTextEncoding::toUTF8($localName)));
             }
             */
@@ -1305,7 +1309,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         while (strlen($file = readdir($handle)) > 0)
         {
             if($file != "." && $file !=".."
-                && !(Utils::isHidden($file) && !$this->driverConf["SHOW_HIDDEN_FILES"])){
+                && !(Utils::isHidden($file) && !Utils::arrayGet($this->driverConf, "SHOW_HIDDEN_FILES"))){
                 if($foldersOnly && is_file($dirName."/".$file)) continue;
                 $count++;
                 if($nonEmptyCheckOnly) break;
@@ -1356,15 +1360,18 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
      * @param array $success
      */
     function extractArchive($destDir, $selection, &$error, &$success){
-        require_once(APP_VENDOR_FOLDER."/pclzip/pclzip.lib.php");
         $zipPath = $selection->getZipPath(true);
         $zipLocalPath = $selection->getZipLocalPath(true);
         if(strlen($zipLocalPath)>1 && $zipLocalPath[0] == "/") $zipLocalPath = substr($zipLocalPath, 1)."/";
         $files = $selection->getFiles();
         $newFiles = array();
         $realZipFile = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $this->urlBase.$zipPath);
-        $archive = new \PclZip($realZipFile);
-        $content = $archive->listContent();
+        try {
+            $content = ZipHelper::listContent($realZipFile);
+        } catch (\Exception $e) {
+            $error[] = $e->getMessage();
+            return;
+        }
         foreach ($files as $key => $item){// Remove path
             $item = substr($item, strlen($zipPath));
             if($item[0] == "/") $item = substr($item, 1);
@@ -1385,18 +1392,13 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         $realDestination = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $this->urlBase.$destDir);
         Logger::debug("Extract", array($realDestination, $realZipFile, $files, $zipLocalPath));
         if(count($files) == 0) {
-            $result = $archive->extract(
-                                    PCLZIP_OPT_PATH, $realDestination,
-                                    PCLZIP_OPT_REMOVE_PATH, $zipLocalPath);
-
-           $selection->setFiles($newFiles);
+            $result = ZipHelper::extract($realZipFile, $realDestination, $zipLocalPath);
+            $selection->setFiles($newFiles);
         } else {
-            $result = $archive->extract(PCLZIP_OPT_BY_NAME, $files,
-                                    PCLZIP_OPT_PATH, $realDestination."/".$zipLocalPath,
-                                    PCLZIP_OPT_REMOVE_PATH, $zipLocalPath);
+            $result = ZipHelper::extract($realZipFile, $realDestination."/".$zipLocalPath, $zipLocalPath, array_values($files));
         }
         if($result <= 0){
-            $error[] = $archive->errorInfo(true);
+            $error[] = ZipHelper::lastError();
         }else{
             $mess = ConfService::getMessages();
             $success[] = sprintf($mess[368], basename($zipPath), $destDir);
@@ -1426,8 +1428,8 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
 
     function renameAction($actionName, $httpVars)
     {
-        $filePath = SystemTextEncoding::fromUTF8($httpVars["file"]);
-        $newFilename = SystemTextEncoding::fromUTF8($httpVars["filename_new"]);
+        $filePath = SystemTextEncoding::fromUTF8($httpVars["file"] ?? "");
+        $newFilename = SystemTextEncoding::fromUTF8($httpVars["filename_new"] ?? "");
         return $this->rename($filePath, $newFilename);
     }
 
@@ -1827,8 +1829,9 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
      * @param String $chmodValue
      * @param Boolean $recursive
      * @param String $nodeType "both", "file", "dir"
+     * @param array $changedFiles
      */
-    function chmod($path, $chmodValue, $recursive=false, $nodeType="both", &$changedFiles)
+    function chmod($path, $chmodValue, $recursive, $nodeType, &$changedFiles)
     {
         $realValue = octdec(ltrim($chmodValue, "0"));
         if(is_file($this->urlBase.$path)){
@@ -1886,28 +1889,29 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
     function makeZip ($src, $dest, $basedir)
     {
         @set_time_limit(0);
-        require_once(APP_VENDOR_FOLDER."/pclzip/pclzip.lib.php");
         $filePaths = array();
         foreach ($src as $item){
             $realFile = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $this->urlBase."/".$item);
             $realFile = Utils::securePath($realFile);
             $basedir = trim(dirname($realFile));
             if(basename($item) == ""){
-                $filePaths[] = array(PCLZIP_ATT_FILE_NAME => $realFile);
+                $filePaths[] = array("filename" => $realFile);
             }else{
-                $filePaths[] = array(PCLZIP_ATT_FILE_NAME => $realFile,
-                                    PCLZIP_ATT_FILE_NEW_SHORT_NAME => basename($item));
+                $filePaths[] = array("filename" => $realFile,
+                                    "new_short_name" => basename($item));
             }
         }
         Logger::debug("Pathes", $filePaths);
         Logger::debug("Basedir", array($basedir));
         self::$filteringDriverInstance = $this;
-        $archive = new \PclZip($dest);
-        $vList = $archive->create($filePaths, PCLZIP_OPT_REMOVE_PATH, $basedir, PCLZIP_OPT_NO_COMPRESSION, PCLZIP_OPT_ADD_TEMP_FILE_ON, PCLZIP_CB_PRE_ADD, array($this, 'zipPreAddCallback'));
-        if(!$vList){
-            throw new \Exception("Zip creation error : ($dest) ".$archive->errorInfo(true));
+        try {
+            $vList = ZipHelper::create($dest, $filePaths, $basedir, array($this, "zipPreAddCallback"), true);
+        } finally {
+            self::$filteringDriverInstance = null;
         }
-        self::$filteringDriverInstance = null;
+        if(!$vList){
+            throw new \Exception("Zip creation error : ($dest) ".ZipHelper::lastError());
+        }
         return $vList;
     }
 
@@ -1956,7 +1960,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
 
     function makeSharedRepositoryOptions($httpVars, $repository){
         $newOptions = array(
-            "PATH" => $repository->getOption("PATH").Utils::decodeSecureMagic($httpVars["file"]),
+            "PATH" => $repository->getOption("PATH").Utils::decodeSecureMagic($httpVars["file"] ?? ""),
             "CREATE" => false,
             "RECYCLE_BIN" => "",
             "DEFAULT_RIGHTS" => "");
@@ -2074,7 +2078,7 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
 
     private function getUniqueId($dir){
         $uid = GUID();
-        $suffix = $this->driverConf["DCOFOLDER_SUFFIX"];
+        $suffix = Utils::arrayGet($this->driverConf, "DCOFOLDER_SUFFIX");
         while (file_exists($this->urlBase.$dir."/".$uid.$suffix)) $uid = GUID();
         return $uid.$suffix;
     }

@@ -56,7 +56,7 @@ class ClientDriver extends Plugin
 
     public function loadConfigs($configData){
         parent::loadConfigs($configData);
-        if(preg_match('/MSIE 7/',$_SERVER['HTTP_USER_AGENT'])){
+        if(preg_match('/MSIE 7/', $_SERVER['HTTP_USER_AGENT'] ?? '')){
             // Force legacy theme for the moment
              $this->pluginConf["GUI_THEME"] = "oxygen";
         }
@@ -72,7 +72,7 @@ class ClientDriver extends Plugin
 	function switchAction($action, $httpVars, $fileVars)
 	{
 		if(!isSet($this->actions[$action])) return;
-        if(preg_match('/MSIE 7/',$_SERVER['HTTP_USER_AGENT'])){
+        if(preg_match('/MSIE 7/', $_SERVER['HTTP_USER_AGENT'] ?? '')){
             // Force legacy theme for the moment
             $this->pluginConf["GUI_THEME"] = "oxygen";
         }
@@ -167,7 +167,7 @@ class ClientDriver extends Plugin
 			case "display_doc":
 			
 				HTMLWriter::charsetHeader();
-				echo HTMLWriter::getDocFile(Utils::securePath(htmlentities($_GET["doc_file"])));
+				echo HTMLWriter::getDocFile(Utils::securePath(htmlentities($_GET["doc_file"] ?? "")));
 				
 			break;
 			
@@ -221,7 +221,7 @@ class ClientDriver extends Plugin
 					$START_PARAMETERS["ALERT"] = implode(", ", array_values($confErrors));
 				}
                 // PRECOMPUTE BOOT CONF
-                if(!preg_match('/MSIE 7/',$_SERVER['HTTP_USER_AGENT']) && !preg_match('/MSIE 8/',$_SERVER['HTTP_USER_AGENT'])){
+                if(!preg_match('/MSIE 7/',$_SERVER['HTTP_USER_AGENT'] ?? '') && !preg_match('/MSIE 8/',$_SERVER['HTTP_USER_AGENT'] ?? '')){
                     $START_PARAMETERS["PRELOADED_BOOT_CONF"] = $this->computeBootConf();
                 }
 
@@ -247,7 +247,7 @@ class ClientDriver extends Plugin
                     }else{
                         $content = file_get_contents(APP_PLUGINS_FOLDER."/gui.ajax/res/html/gui.html");
                     }
-                    if(preg_match('/MSIE 7/',$_SERVER['HTTP_USER_AGENT']) || preg_match('/MSIE 8/',$_SERVER['HTTP_USER_AGENT'])){
+                    if(preg_match('/MSIE 7/',$_SERVER['HTTP_USER_AGENT'] ?? '') || preg_match('/MSIE 8/',$_SERVER['HTTP_USER_AGENT'] ?? '')){
                         $content = str_replace("app_boot.js", "app_boot_protolegacy.js", $content);
                     }
 					$content = XMLWriter::replaceXmlKeywords($content, false);
@@ -282,7 +282,7 @@ class ClientDriver extends Plugin
             $_SESSION["APP_SERVER_PREFIX_URI"] = str_replace("_UP_", "..", $_GET["server_prefix_uri"]);
         }
         $config = array();
-        $config["resourcesFolder"] = "plugins/gui.ajax/res";
+        $config["resourcesFolder"] = APP_PLUGINS_FOLDER_REL."/gui.ajax/res";
         if(session_name() == "App_Shared"){
             $config["appServerAccess"] = "index_shared.php";
         }else{
@@ -317,7 +317,7 @@ class ClientDriver extends Plugin
         $config["usersEditable"] = ConfService::getAuthDriverImpl()->usersEditable();
         $config["appVersion"] = APP_VERSION;
         $config["appVersionDate"] = APP_VERSION_DATE;
-        if(stristr($_SERVER["HTTP_USER_AGENT"], "msie 6")){
+        if(stristr($_SERVER["HTTP_USER_AGENT"] ?? "", "msie 6")){
             $config["cssResources"] = array("css/pngHack/pngHack.css");
         }
         if(!empty($this->pluginConf['GOOGLE_ANALYTICS_ID'])) {

@@ -559,7 +559,8 @@ $mess=array(
 "478" => "Agregar",
 "479" => "Remover",
 "480" => "Sin lenguaje",
-"481" => "Continuar"
+"481" => "Continuar",
+"missing_app_secret_key" => "Falta la clave secreta de configuración de la aplicación"
 /* END SENTENCE */
 );
 ?>
