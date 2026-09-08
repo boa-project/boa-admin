@@ -478,18 +478,6 @@ class Utils
         return 0;
     }
     /**
-     * Whether a file is to be considered as an mp3... Should be DEPRECATED
-     * @static
-     * @param string $fileName
-     * @return bool
-     * @deprecated
-     */
-    static function is_mp3($fileName)
-    {
-        if (preg_match("/\.mp3$/i", $fileName)) return 1;
-        return 0;
-    }
-    /**
      * Static image mime type headers
      * @static
      * @param $fileName

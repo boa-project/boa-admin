@@ -87,7 +87,7 @@ class SerialAuthDriver extends AbstractAuthDriver {
     function supportsUsersPagination(){
         return true;
     }
-    function listUsersPaginated($baseGroup = "/", $regexp, $offset = -1 , $limit = -1){
+    function listUsersPaginated($baseGroup, $regexp, $offset = -1 , $limit = -1){
         $users = $this->listUsers($baseGroup);
         $result = array();
         $index = 0;

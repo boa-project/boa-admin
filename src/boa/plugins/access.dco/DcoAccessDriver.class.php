@@ -42,6 +42,7 @@ use BoA\Core\Services\AuthService;
 use BoA\Core\Services\ConfService;
 use BoA\Core\Services\PluginsService;
 use BoA\Core\Utils\Utils;
+use BoA\Core\Utils\ZipHelper;
 use BoA\Core\Utils\Text\SystemTextEncoding;
 use BoA\Core\Xml\ManifestNode;
 use BoA\Plugins\Core\Access\AbstractAccessDriver;
@@ -1359,15 +1360,18 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
      * @param array $success
      */
     function extractArchive($destDir, $selection, &$error, &$success){
-        require_once(APP_VENDOR_FOLDER."/pclzip/pclzip.lib.php");
         $zipPath = $selection->getZipPath(true);
         $zipLocalPath = $selection->getZipLocalPath(true);
         if(strlen($zipLocalPath)>1 && $zipLocalPath[0] == "/") $zipLocalPath = substr($zipLocalPath, 1)."/";
         $files = $selection->getFiles();
         $newFiles = array();
         $realZipFile = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $this->urlBase.$zipPath);
-        $archive = new \PclZip($realZipFile);
-        $content = $archive->listContent();
+        try {
+            $content = ZipHelper::listContent($realZipFile);
+        } catch (\Exception $e) {
+            $error[] = $e->getMessage();
+            return;
+        }
         foreach ($files as $key => $item){// Remove path
             $item = substr($item, strlen($zipPath));
             if($item[0] == "/") $item = substr($item, 1);
@@ -1388,18 +1392,13 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         $realDestination = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $this->urlBase.$destDir);
         Logger::debug("Extract", array($realDestination, $realZipFile, $files, $zipLocalPath));
         if(count($files) == 0) {
-            $result = $archive->extract(
-                                    PCLZIP_OPT_PATH, $realDestination,
-                                    PCLZIP_OPT_REMOVE_PATH, $zipLocalPath);
-
-           $selection->setFiles($newFiles);
+            $result = ZipHelper::extract($realZipFile, $realDestination, $zipLocalPath);
+            $selection->setFiles($newFiles);
         } else {
-            $result = $archive->extract(PCLZIP_OPT_BY_NAME, $files,
-                                    PCLZIP_OPT_PATH, $realDestination."/".$zipLocalPath,
-                                    PCLZIP_OPT_REMOVE_PATH, $zipLocalPath);
+            $result = ZipHelper::extract($realZipFile, $realDestination."/".$zipLocalPath, $zipLocalPath, array_values($files));
         }
         if($result <= 0){
-            $error[] = $archive->errorInfo(true);
+            $error[] = ZipHelper::lastError();
         }else{
             $mess = ConfService::getMessages();
             $success[] = sprintf($mess[368], basename($zipPath), $destDir);
@@ -1830,8 +1829,9 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
      * @param String $chmodValue
      * @param Boolean $recursive
      * @param String $nodeType "both", "file", "dir"
+     * @param array $changedFiles
      */
-    function chmod($path, $chmodValue, $recursive=false, $nodeType="both", &$changedFiles)
+    function chmod($path, $chmodValue, $recursive, $nodeType, &$changedFiles)
     {
         $realValue = octdec(ltrim($chmodValue, "0"));
         if(is_file($this->urlBase.$path)){
@@ -1889,28 +1889,29 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
     function makeZip ($src, $dest, $basedir)
     {
         @set_time_limit(0);
-        require_once(APP_VENDOR_FOLDER."/pclzip/pclzip.lib.php");
         $filePaths = array();
         foreach ($src as $item){
             $realFile = call_user_func(array($this->wrapperClassName, "getRealFSReference"), $this->urlBase."/".$item);
             $realFile = Utils::securePath($realFile);
             $basedir = trim(dirname($realFile));
             if(basename($item) == ""){
-                $filePaths[] = array(PCLZIP_ATT_FILE_NAME => $realFile);
+                $filePaths[] = array("filename" => $realFile);
             }else{
-                $filePaths[] = array(PCLZIP_ATT_FILE_NAME => $realFile,
-                                    PCLZIP_ATT_FILE_NEW_SHORT_NAME => basename($item));
+                $filePaths[] = array("filename" => $realFile,
+                                    "new_short_name" => basename($item));
             }
         }
         Logger::debug("Pathes", $filePaths);
         Logger::debug("Basedir", array($basedir));
         self::$filteringDriverInstance = $this;
-        $archive = new \PclZip($dest);
-        $vList = $archive->create($filePaths, PCLZIP_OPT_REMOVE_PATH, $basedir, PCLZIP_OPT_NO_COMPRESSION, PCLZIP_OPT_ADD_TEMP_FILE_ON, PCLZIP_CB_PRE_ADD, array($this, 'zipPreAddCallback'));
-        if(!$vList){
-            throw new \Exception("Zip creation error : ($dest) ".$archive->errorInfo(true));
+        try {
+            $vList = ZipHelper::create($dest, $filePaths, $basedir, array($this, "zipPreAddCallback"), true);
+        } finally {
+            self::$filteringDriverInstance = null;
         }
-        self::$filteringDriverInstance = null;
+        if(!$vList){
+            throw new \Exception("Zip creation error : ($dest) ".ZipHelper::lastError());
+        }
         return $vList;
     }
 

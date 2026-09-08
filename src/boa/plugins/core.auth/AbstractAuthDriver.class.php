@@ -294,7 +294,7 @@ class AbstractAuthDriver extends Plugin {
     function supportsUsersPagination(){
         return false;
     }
-    function listUsersPaginated($baseGroup = "/", $regexp, $offset, $limit){
+    function listUsersPaginated($baseGroup, $regexp, $offset = -1, $limit = -1){
         return $this->listUsers($baseGroup);
     }
     function getUsersCount($baseGroup = "/", $regexp = ""){

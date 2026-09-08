@@ -54,6 +54,13 @@ class DcoAccessWrapper implements FileWrapper {
      */
     protected $fp;
     /**
+     * Stream context set by PHP when the wrapper is opened.
+     * Must be declared: PHP 8.2 deprecates creating it dynamically.
+     *
+     * @var resource|null
+     */
+    public $context;
+    /**
      * DirHandle resource
      *
      * @var resource
