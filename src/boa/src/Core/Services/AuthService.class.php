@@ -674,7 +674,7 @@ class AuthService
 
     /**
      * Password hashing via password_hash (PASSWORD_DEFAULT).
-     * Legacy MD5 strings are not produced and cannot be verified.
+     * Legacy MD5 strings are not produced.
      * @static
      * @param $pass
      * @return string
@@ -684,8 +684,18 @@ class AuthService
     }
 
     /**
+     * True when the stored value is a legacy bare MD5 login hash.
+     * @static
+     * @param mixed $stored
+     * @return bool
+     */
+    static function isLegacyMd5Hash($stored){
+        return is_string($stored) && preg_match('/^[a-f0-9]{32}$/i', $stored) === 1;
+    }
+
+    /**
      * Verify a clear password against a stored hash.
-     * Rejects legacy MD5 (32 hex) and other non-password_hash values.
+     * Accepts password_hash (bcrypt/argon2) and legacy MD5 for one-time migration.
      * @static
      * @param string $pass Clear password
      * @param string $stored Stored hash
@@ -695,9 +705,9 @@ class AuthService
         if (!is_string($stored) || $stored === '') {
             return false;
         }
-        // Invalidate legacy MD5 login hashes after OpenSSL cutover.
-        if (preg_match('/^[a-f0-9]{32}$/i', $stored)) {
-            return false;
+        // One-time migration: accept legacy MD5, then callers should rehash via encodePassword.
+        if (self::isLegacyMd5Hash($stored)) {
+            return hash_equals(strtolower($stored), md5($pass));
         }
         if (!preg_match('/^\$2[ayb]\$|\$argon2/i', $stored)) {
             return false;

@@ -125,7 +125,12 @@ class SerialAuthDriver extends AbstractAuthDriver {
 		if($seed != "-1" && $seed != -1){
 			return false;
 		}
-		return AuthService::verifyPassword($pass, $userStoredPass);
+		$ok = AuthService::verifyPassword($pass, $userStoredPass);
+		if ($ok && AuthService::isLegacyMd5Hash($userStoredPass)) {
+			// Upgrade MD5 → password_hash on successful login (CryptoUpgrade left hashes unmigrated).
+			$this->changePassword($login, $pass);
+		}
+		return $ok;
 	}
 	
 	function usersEditable(){

@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Login password storage: password_hash / password_verify via AuthService.
  *
- * encodePassword / verifyPassword reject legacy bare MD5 (forced reset path).
+ * Legacy bare MD5 is accepted only to allow one-time upgrade to password_hash.
  * Reset-token flow is covered by PasswordResetTest.
  */
 final class AuthPasswordTest extends TestCase
@@ -24,14 +24,16 @@ final class AuthPasswordTest extends TestCase
         $this->assertFalse(AuthService::verifyPassword('wrong', $encoded));
     }
 
-    public function testVerifyPasswordRejectsLegacyMd5(): void
+    public function testVerifyPasswordAcceptsLegacyMd5ForMigration(): void
     {
         $plain = 'legacy-pass';
         $md5 = md5($plain);
-        $this->assertFalse(
+        $this->assertTrue(AuthService::isLegacyMd5Hash($md5));
+        $this->assertTrue(
             AuthService::verifyPassword($plain, $md5),
-            'Bare MD5 must be rejected after cutover'
+            'Correct clear password must match legacy MD5 for migration login'
         );
+        $this->assertFalse(AuthService::verifyPassword('wrong', $md5));
     }
 
     public function testPasswordHashAndVerifyContract(): void
