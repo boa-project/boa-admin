@@ -31,6 +31,8 @@ You must provide the secret in one of these ways:
 
 2. **Or set the environment variable** `APP_SECRET_KEY` (used only when the constant is not defined or is empty).
 
+### `APP_SECRET_KEY` validation
+
 Add the resolution and failure handling from the sample. Typical placement:
 
 1. **Before** `spl_autoload_register('APP_autoload');` — resolve or flag a missing secret:
