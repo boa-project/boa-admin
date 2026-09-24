@@ -1,11 +1,23 @@
+# Disable directory listings under the document root.
+Options -Indexes
+
 <IfModule mod_rewrite.c>
 # You must set the correct values here if you want
-# to enable webDAV sharing. The values assume that your 
-# BoA installation is at http://yourdomain/boa 
-# and that you want the webDAV shares to be accessible via 
+# to enable webDAV sharing. The values assume that your
+# BoA installation is at http://yourdomain/boa
+# and that you want the webDAV shares to be accessible via
 # http://yourdomain/boa/shares/repository_id/
 RewriteEngine on
 RewriteBase /
+
+# Block direct HTTP access to configuration, data, and other sensitive paths/files.
+# Defense in depth alongside boa/conf/.htaccess (and similar deny rules).
+# Prefer APP_SECRET_KEY via server/environment config, not SetEnv in a committed file.
+RewriteRule ^boa/conf(/|$) - [F,L]
+RewriteRule ^data(/|$) - [F,L]
+RewriteRule (^|/)VERSION$ - [F,L]
+RewriteRule \.(sample|inc| Dist|sql|bak|old|orig)$ - [F,L,NC]
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^shares ./dav.php [L]
@@ -19,3 +31,14 @@ RewriteRule ^plugins/(.*) ./boa/plugins/$1
 #RewriteCond %{HTTP:Authorization} ^(.*)
 #RewriteRule ^(.*) - [E=HTTP_AUTHORIZATION:%1]
 </IfModule>
+
+# Extra safety net if rewrite is disabled: never serve VERSION as a static file.
+<Files "VERSION">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</Files>
