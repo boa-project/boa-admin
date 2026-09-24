@@ -87,12 +87,15 @@
 							<div class="SF_element">
 								<input type="checkbox" class="radio" name="remember_me" style="border: none; width:20px !important;"/><gui:message message_id="261">APP_MESSAGE[261]</gui:message>
 							</div>
+							<div class="SF_element" style="margin-top:6px;">
+								<a href="javascript:app.actionBar.fireAction('forgot_password');" style="font-size:11px;">Forgot password?</a>
+							</div>
 						</div>
 						</div>					
 					]]></clientForm>
 				<serverCallback methodName="switchAction"></serverCallback>
 			</processing>
-		</action>		
+		</action>
 		<action name="pass_change">
 			<gui text="194" title="194" src="yast_security.png" iconClass="icon-key" accessKey="" hasAccessKey="false">
 				<context selection="false" dir="" recycle="true" actionBarGroup="utils" appWidgets="UserWidget::logging_string"></context>
@@ -232,6 +235,60 @@
             </processing>
         </action>
         <action name="back">
+            <processing>
+                <serverCallback methodName="switchAction"/>
+            </processing>
+        </action>
+        <action name="forgot_password" skipSecureToken="true">
+            <gui text="Forgot password" title="Forgot password" iconClass="icon-envelope" accessKey="" hasAccessKey="false">
+                <context selection="false" dir="" recycle="false" actionBar="false" contextMenu="false" infoPanel="false"></context>
+            </gui>
+            <rightsContext noUser="false" userLogged="hidden" guestLogged="show" read="false" write="false" adminOnly=""/>
+            <processing>
+                <clientCallback prepareModal="true" dialogOpenForm="forgot_password_form" dialogOkButtonOnly="false" dialogSkipButtons="false">
+                    <dialogOnOpen><![CDATA[
+                        if($('forgot_login_or_email')) $('forgot_login_or_email').value = '';
+                    ]]></dialogOnOpen>
+                    <dialogOnComplete hideDialog="false"><![CDATA[
+                        var oForm = modal.getForm();
+                        var val = oForm.down('#forgot_login_or_email').value;
+                        if(!val){ alert('Enter your login or email.'); return false; }
+                        var conn = new Connexion();
+                        conn.addParameter('get_action', 'forgot_password');
+                        conn.addParameter('login_or_email', val);
+                        conn.onComplete = function(transport){
+                            var msg = 'If that account exists, a reset email was sent.';
+                            try {
+                                var j = transport.responseText.evalJSON();
+                                if(j && j.message) msg = j.message;
+                            } catch(e) {}
+                            app.displayMessage('SUCCESS', msg);
+                            hideLightBox(true);
+                        };
+                        conn.setMethod('post');
+                        conn.sendAsync();
+                        return false;
+                    ]]></dialogOnComplete>
+                    <dialogOnCancel><![CDATA[]]></dialogOnCancel>
+                </clientCallback>
+                <clientForm id="forgot_password_form"><![CDATA[
+                    <div id="forgot_password_form" action="forgot_password_form" box_width="260">
+                        <div class="dialogLegend" style="margin-bottom:8px;">Enter your login or email. If an account matches, we will send a reset link.</div>
+                        <div class="SF_element">
+                            <div class="SF_label">Login / Email</div>
+                            <input id="forgot_login_or_email" type="text" class="dialogFocus SF_input" style="width:100%;"/>
+                        </div>
+                    </div>
+                ]]></clientForm>
+                <serverCallback methodName="switchAction"></serverCallback>
+            </processing>
+        </action>
+        <action name="reset_password" skipSecureToken="true">
+            <processing>
+                <serverCallback methodName="switchAction"/>
+            </processing>
+        </action>
+        <action name="reset_password_form" skipSecureToken="true">
             <processing>
                 <serverCallback methodName="switchAction"/>
             </processing>

@@ -59,7 +59,7 @@ class VideoReader extends Plugin implements ITaskProviderFactory {
 		    	
 		if($action == "read_video_data"){
 			Logger::debug("Reading video");
-            $file = Utils::decodeSecureMagic($httpVars["file"]);
+            $file = Utils::decodeSecureMagic(Utils::arrayGet($httpVars, "file"));
             $node = new ManifestNode($destStreamURL.$file);
             session_write_close();
             $filesize = filesize($destStreamURL.$file);
@@ -167,7 +167,7 @@ class VideoReader extends Plugin implements ITaskProviderFactory {
         foreach ($entries as $entry => $value) {
         	# code...
         	$info = pathinfo($value);
-        	$alternates[$info['extension']][] = $info['filename']; //$altpath . "/" . $info['basename'];
+        	$alternates[Utils::arrayGet($info, 'extension')][] = Utils::arrayGet($info, 'filename'); //$altpath . "/" . Utils::arrayGet($info, 'basename');
         }
         
         $extra = array("alternates" => json_encode($alternates));
@@ -206,7 +206,7 @@ class VideoReader extends Plugin implements ITaskProviderFactory {
 		}
 
 		$path = $repository->getOption("PATH");
-		$relpath = $httpVars["binary_path"]. "/" . $httpVars["binary_id"];
+		$relpath = Utils::arrayGet($httpVars, "binary_path"). "/" . Utils::arrayGet($httpVars, "binary_id");
 		$parts = explode("/", ltrim($relpath, "/"));
 		$root = array_shift($parts);
 		$relpath = implode("/", $parts);
@@ -241,7 +241,7 @@ class VideoReader extends Plugin implements ITaskProviderFactory {
 		}
 
 		$path = $repository->getOption("PATH");
-		$binarypath = $httpVars["binary_path"];
+		$binarypath = Utils::arrayGet($httpVars, "binary_path");
 		$parts = explode("/", ltrim($binarypath, "/"));
 		$root = array_shift($parts);
 		$relpath = implode("/", $parts);
@@ -262,7 +262,8 @@ class VideoReader extends Plugin implements ITaskProviderFactory {
 		//$boxData["size"]
 		//1603300
 
-		$extension = strpos($boxData["name"], ".") ? array_pop(explode('.', $boxData["name"])) : "";
+		$nameParts = explode('.', $boxData["name"]);
+		$extension = strpos($boxData["name"], ".") ? array_pop($nameParts) : "";
 		$extension = strtolower($extension);
 
 		if (($isThumbnail && !preg_match("/^(?:jpe?g|png)$/", $extension)) ||

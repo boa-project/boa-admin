@@ -51,6 +51,11 @@ class TextLogDriver extends AbstractLogDriver {
     var $USER_GROUP_RIGHTS = 0770;
 
     /**
+     * @var Integer Severity bitmask used when writing log lines.
+     */
+    var $severityDescription = 0;
+
+    /**
      * @var Integer File handle to currently open log file.
      */
     var $fileHandle;
@@ -75,7 +80,9 @@ class TextLogDriver extends AbstractLogDriver {
      * Close file handle on objects destructor.
      */
     function __destruct(){
-        if($this->fileHandle !== false) $this->close();
+        if (is_resource($this->fileHandle)) {
+            $this->close();
+        }
     }
 
     /**
@@ -191,7 +198,12 @@ class TextLogDriver extends AbstractLogDriver {
      * @access public
      */
     function close() {
+        if (!is_resource($this->fileHandle)) {
+            $this->fileHandle = false;
+            return;
+        }
         $success = @fclose($this->fileHandle);
+        $this->fileHandle = false;
         if ($success === false) {
             // Failure to close the log file
         }

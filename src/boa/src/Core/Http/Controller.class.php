@@ -126,7 +126,8 @@ class Controller{
         }
         $restPath = $restPathList->item(0)->nodeValue;
         $paramNames = explode("/", trim($restPath, "/"));
-        $path = array_shift(explode("?", $path));
+        $pathParts = explode("?", $path);
+        $path = array_shift($pathParts);
         $paramValues = array_map("urldecode", explode("/", trim($path, "/"), count($paramNames)));
         foreach($paramNames as $i => $pName){
             if(strpos($pName, "+") !== false){
@@ -324,13 +325,13 @@ class Controller{
         $logDir = APP_CACHE_DIR."/cmd_outputs";
         if(!is_dir($logDir)) mkdir($logDir, 0755);
         $logFile = $logDir."/".$token.".out";
-		$iv = mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND);
         if(empty($user)){
             if(AuthService::usersEnabled() && AuthService::getLoggedUser() !== null) $user = AuthService::getLoggedUser()->getId();
             else $user = "shared";
         }
         if(AuthService::usersEnabled()){
-            $user = base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256,  md5($token."\1CDAFx¨op#"), $user, MCRYPT_MODE_ECB, $iv));
+            // base64 whole payload so shell argv stays safe (no `:` / `+` issues).
+            $user = base64_encode(\BoA\Core\Security\Crypto::encrypt($user, 'cli:'.$token));
         }
         $robustInstallPath = str_replace("/", DIRECTORY_SEPARATOR, APP_INSTALL_PATH);
 		$cmd = ConfService::getCoreConf("CLI_PHP")." ".$robustInstallPath.DIRECTORY_SEPARATOR."cmd.php -u=$user -t=$token -a=$actionName -r=$currentRepositoryId";

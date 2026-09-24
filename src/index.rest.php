@@ -11,7 +11,9 @@ $apipwd = "";
  * Verify basic authentication was provided
  */
 
-if (!isset($_SERVER['PHP_AUTH_USER'])  || $_SERVER["PHP_AUTH_USER"] != $apiusr || $_SERVER["PHP_AUTH_PW"] != $apipwd ) {
+if (!isset($_SERVER['PHP_AUTH_USER'])
+    || $_SERVER['PHP_AUTH_USER'] != $apiusr
+    || (isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : '') != $apipwd) {
     header('WWW-Authenticate: Basic realm="BoA API Realm"');
     header('HTTP/1.0 401 Unauthorized');
     echo 'You are not authorized to access this API.';

@@ -15,85 +15,132 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
- * This is a one-line short description of the file/class.
+ * Simple GD CAPTCHA for brute-force login protection (PHP 8.3, no securimage).
  *
- * You can have a rather longer description of the file/class as well,
- * if you like, and it can span multiple lines.
- *
- * @package    [PACKAGE]
- * @category   [CATEGORY]
+ * @package    BoA
+ * @category   Core
  * @copyright  2017 BoA Project
  * @license    https://www.gnu.org/licenses/agpl-3.0.html GNU Affero GPL v3 or later
  */
 namespace BoA\Core\Security;
 
-defined('APP_EXEC') or die( 'Access not allowed');
-
-include_once(APP_VENDOR_FOLDER."/securimage/securimage.php");
+defined('APP_EXEC') or die('Access not allowed');
 
 /**
- * Encapsulation of the securimage external library, to generate a Captcha Image on brute force login attempt.
+ * Generate and verify a CAPTCHA image for brute-force login attempts.
  * @package BoA
  * @subpackage Core
  */
-class CaptchaProvider{
-	/**
+class CaptchaProvider
+{
+    private const SESSION_CODE = 'boa_captcha_code';
+    private const SESSION_TIME = 'boa_captcha_ctime';
+    private const EXPIRY_SECONDS = 900;
+    private const CHARSET = 'ABCDEFGHKLMNPRSTUVWXYZ23456789';
+
+    /**
      * Print out a Captcha image
      * @static
      * @return void
      */
-	public static function sendCaptcha(){
-		
-		$libPath = APP_VENDOR_FOLDER."/securimage";
-		
-		$img = new \Securimage();
-		$img->wordlist_file = $libPath."/words/words.txt";
-		$img->gd_font_file = $libPath."/gdfonts/automatic.gdf";
-		$img->signature_font = $img->ttf_file = $libPath."/AHGBold.ttf";
-				
-		$img->image_height = 80;
-		$img->image_width = 170;
-		$img->perturbation = 0.85;
-		$img->image_bg_color = new \Securimage_Color("#f6f6f6");
-		$img->multi_text_color = array(new \Securimage_Color("#3399ff"),
-		                               new \Securimage_Color("#3300cc"),
-		                               new \Securimage_Color("#3333cc"),
-		                               new \Securimage_Color("#6666ff"),
-		                               new \Securimage_Color("#99cccc")
-		                               );
-		$img->use_multi_text = true;
-		$img->text_angle_minimum = -5;
-		$img->text_angle_maximum = 5;
-		$img->use_transparent_text = true;
-		$img->text_transparency_percentage = 30; // 100 = completely transparent
-		$img->num_lines = 5;
-		$img->line_color = new \Securimage_Color("#eaeaea");
-		$img->signature_color = new \Securimage_Color(rand(0, 64), rand(64, 128), rand(128, 255));
-		$img->use_wordlist = true; 
-		if(!function_exists('imagettftext')){
-			$img->use_gd_font = true;	
-			$img->use_transparent_text = false;	
-			$img->use_multi_text = false;
-		}
-		//$img->show($libPath."/backgrounds/bg3.jpg");		
-		$img->show();
-	}
+    public static function sendCaptcha()
+    {
+        self::ensureSession();
+
+        if (!function_exists('imagecreatetruecolor')) {
+            header('HTTP/1.1 500 Internal Server Error');
+            echo 'GD extension required for captcha';
+            exit;
+        }
+
+        $code = self::randomCode(5);
+        $_SESSION[self::SESSION_CODE] = strtolower($code);
+        $_SESSION[self::SESSION_TIME] = time();
+
+        $width = 170;
+        $height = 80;
+        $im = imagecreatetruecolor($width, $height);
+        $bg = imagecolorallocate($im, 246, 246, 246);
+        imagefilledrectangle($im, 0, 0, $width, $height, $bg);
+
+        for ($i = 0; $i < 5; $i++) {
+            $line = imagecolorallocate($im, 220 + rand(0, 20), 220 + rand(0, 20), 220 + rand(0, 20));
+            imageline($im, rand(0, $width), rand(0, $height), rand(0, $width), rand(0, $height), $line);
+        }
+
+        $colors = array(
+            imagecolorallocate($im, 51, 153, 255),
+            imagecolorallocate($im, 51, 0, 204),
+            imagecolorallocate($im, 51, 51, 204),
+            imagecolorallocate($im, 102, 102, 255),
+            imagecolorallocate($im, 153, 204, 204),
+        );
+
+        $len = strlen($code);
+        $slot = (int) ($width / ($len + 1));
+        for ($i = 0; $i < $len; $i++) {
+            $color = $colors[array_rand($colors)];
+            $size = 5;
+            $x = $slot * ($i + 1) - 8 + rand(-2, 2);
+            $y = (int) ($height / 2) - 8 + rand(-6, 6);
+            imagestring($im, $size, $x, $y, $code[$i], $color);
+        }
+
+        header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+        header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        header('Cache-Control: post-check=0, pre-check=0', false);
+        header('Pragma: no-cache');
+        header('Content-Type: image/png');
+        imagepng($im);
+        imagedestroy($im);
+        exit;
+    }
 
     /**
      * Verify the code against the current image.
      * @static
-     * @param $code
+     * @param string $code
      * @return bool
      */
-	public static function checkCaptchaResult($code){
-		
-		$img = new \Securimage();
-		return $img->check($code);
-		
-	}
-	
-}
+    public static function checkCaptchaResult($code)
+    {
+        self::ensureSession();
 
-?>
+        if (!isset($_SESSION[self::SESSION_CODE]) || trim((string) $_SESSION[self::SESSION_CODE]) === '') {
+            return false;
+        }
+        if (!isset($_SESSION[self::SESSION_TIME]) || self::isExpired((int) $_SESSION[self::SESSION_TIME])) {
+            unset($_SESSION[self::SESSION_CODE], $_SESSION[self::SESSION_TIME]);
+            return false;
+        }
+
+        $ok = hash_equals((string) $_SESSION[self::SESSION_CODE], strtolower(trim((string) $code)));
+        unset($_SESSION[self::SESSION_CODE], $_SESSION[self::SESSION_TIME]);
+        return $ok;
+    }
+
+    private static function ensureSession()
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+    }
+
+    private static function isExpired($ctime)
+    {
+        return (time() - $ctime) >= self::EXPIRY_SECONDS;
+    }
+
+    private static function randomCode($length)
+    {
+        $out = '';
+        $max = strlen(self::CHARSET) - 1;
+        for ($i = 0; $i < $length; $i++) {
+            $out .= self::CHARSET[random_int(0, $max)];
+        }
+        return $out;
+    }
+}

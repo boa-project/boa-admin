@@ -15,7 +15,7 @@
 // along with BoA.  If not, see <http://www.gnu.org/licenses/>.
 //
 // The latest code can be found at <https://github.com/boa-project/>.
- 
+
 /**
  * This is a one-line short description of the file/class.
  *
@@ -69,6 +69,18 @@ define("SOFTWARE_UPDATE_SITE", "https://github.com/boa-project");
 // The admin password is created and his password is changed,
 // this config has no more impact.
 define("ADMIN_PASSWORD", "admin");
+define('APP_SECRET_KEY', 'your-long-random-secret');
+// Application secret for OpenSSL Crypto. Required: define APP_SECRET_KEY or set the env var.
+// There is no default. A missing key is reported after autoload via ConfService.
+$__boaMissingSecret = false;
+if (!defined('APP_SECRET_KEY') || APP_SECRET_KEY === '') {
+	$__boaSecret = getenv('APP_SECRET_KEY');
+	if ($__boaSecret === false || $__boaSecret === '' || defined('APP_SECRET_KEY')) {
+		$__boaMissingSecret = true;
+	} else {
+		define('APP_SECRET_KEY', $__boaSecret);
+	}
+}
 // For a specific distribution, you can specify where the
 // log files will be stored. This should be detected by log.* plugins
 // and used if defined. See bootstrap_plugins.php default configs for
@@ -80,7 +92,7 @@ define("APP_SERVER_DEBUG"  ,   false);
 define("APP_SKIP_CACHE"    ,   true);
 
 //require(APP_BIN_FOLDER."/compat.php");
-function APP_autoload($className){    
+function APP_autoload($className){
     //Core Classes
     $className = str_replace('\\', '/', $className);
     $lClassName = preg_replace('/^BoA\//', '', $className);
@@ -89,13 +101,13 @@ function APP_autoload($className){
         require_once($fileName);
         return;
     }
-    //Core interfaces    
+    //Core interfaces
     $fileName = APP_BIN_FOLDER."/".$lClassName.".interface.php";
     if(file_exists($fileName)){
         require_once($fileName);
         return;
     }
-    
+
     //Core Plugin Classes //\\x7f-\\xff\\x7f-\\xff
     $classNamePattern = "\/([a-zA-Z_][a-zA-Z0-9_]*)";
     if (preg_match("/^BoA\/Plugins$classNamePattern$classNamePattern$classNamePattern/", $className, $matches)){
@@ -121,7 +133,17 @@ function APP_autoload($className){
 
 spl_autoload_register('APP_autoload');
 
+use BoA\Core\Services\ConfService;
 use BoA\Core\Utils\Utils;
+
+if (!empty($__boaMissingSecret)) {
+	$__boaMessage = ConfService::getCoreMessage('missing_app_secret_key');
+	if (PHP_SAPI !== 'cli' && !headers_sent()) {
+		header('HTTP/1.1 500 Internal Server Error');
+		header('Content-Type: text/plain; charset=UTF-8');
+	}
+	die($__boaMessage);
+}
 
 Utils::safeIniSet("session.cookie_httponly", 1);
 

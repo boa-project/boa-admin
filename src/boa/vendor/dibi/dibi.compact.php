@@ -11,7 +11,9 @@
 
 if(version_compare(PHP_VERSION,'5.2.0','<')){throw
 new
-Exception('dibi needs PHP 5.2.0 or newer.');}@set_magic_quotes_runtime(FALSE);interface
+Exception('dibi needs PHP 5.2.0 or newer.');}if(!defined('BOA_ALLOW_DIBI')){throw
+new
+Exception('dibi is quarantined under PHP 8.3; define BOA_ALLOW_DIBI to load (see vendor/dibi/QUARANTINED.md).');}/* set_magic_quotes_runtime removed for PHP 8.3 */;interface
 IDataSource
 extends
 Countable,IteratorAggregate{}interface
@@ -169,7 +171,7 @@ DibiTranslator($this);$profilerCfg=&$config['profiler'];if(is_scalar($profilerCf
 DibiFileLogger($profilerCfg['file'],$filter),'logEvent');}if(DibiFirePhpLogger::isAvailable()){$this->onEvent[]=array(new
 DibiFirePhpLogger($filter),'logEvent');}if(class_exists('DibiNettePanel',FALSE)){$panel=new
 DibiNettePanel(isset($profilerCfg['explain'])?$profilerCfg['explain']:TRUE,$filter);$panel->register($this);}}$this->substitutes=new
-DibiHashMap(create_function('$expr','return ":$expr:";'));if(!empty($config['substitutes'])){foreach($config['substitutes']as$key=>$value){$this->substitutes->$key=$value;}}if(empty($config['lazy'])){$this->connect();}}function
+DibiHashMap(function($expr){return ":$expr:";});if(!empty($config['substitutes'])){foreach($config['substitutes']as$key=>$value){$this->substitutes->$key=$value;}}if(empty($config['lazy'])){$this->connect();}}function
 __destruct(){$this->connected&&$this->driver->getResource()&&$this->disconnect();}final
 function
 connect(){$event=$this->onEvent?new

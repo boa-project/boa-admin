@@ -1,2 +1,9 @@
-#src/data/
+# Local / tooling
+/vendor/
+/.phpunit.cache/
+.phpunit.result.cache
+
+# Editor
 *.sublime-*
+
+#src/data/

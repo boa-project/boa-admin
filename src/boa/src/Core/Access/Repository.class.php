@@ -320,7 +320,8 @@ class Repository implements GroupPathProvider {
         if(!count($roots)) return $path;
         foreach($roots as $rootKey => $rootValue){
             if(strpos($path, "/".ltrim($rootKey, "/")) === 0){
-                return preg_replace("/^\/{$rootKey}/", $rootValue["path"], $path, 1);
+                $rootPath = $rootValue["path"] ?? "";
+                return preg_replace("/^\/{$rootKey}/", $rootPath, $path, 1);
             }
         }
         return $path;

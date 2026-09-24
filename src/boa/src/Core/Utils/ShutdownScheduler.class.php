@@ -69,8 +69,8 @@ class ShutdownScheduler
         }
         $flattenArray = array();
         $flattenArray[0] = $callback[0];
-        if(is_array($callback[1])) {
-            foreach($callback[1] as $argument) $flattenArray[] = $argument;
+        if(is_array(Utils::arrayGet($callback, 1))) {
+            foreach(Utils::arrayGet($callback, 1, array()) as $argument) $flattenArray[] = $argument;
         }
         $this->callbacks[] = $flattenArray;
         return true;

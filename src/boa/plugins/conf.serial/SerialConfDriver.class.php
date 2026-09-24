@@ -386,7 +386,8 @@ class SerialConfDriver extends AbstractConfDriver {
                 $sub = "/".array_shift($parts);
                 if(!isset($levelGroups[$sub])) $levelGroups[$sub] = $path;
                 if(substr($id, 0, strlen("APP_GROUP:")) == "APP_GROUP:"){
-                    $labels[$path] = array_pop(explode(":", $id, 2));
+                    $idParts = explode(":", $id, 2);
+                    $labels[$path] = array_pop($idParts);
                 }
             }
         }
@@ -519,7 +520,7 @@ class SerialConfDriver extends AbstractConfDriver {
     function saveBinary($context, $fileName, $ID = null)
     {
         if(empty($ID)){
-            $ID = substr(md5(microtime()*rand(0,100)), 0, 12);
+            $ID = substr(md5(microtime(true)*rand(0,100)), 0, 12);
             $ID .= ".".pathinfo($fileName, PATHINFO_EXTENSION);
         }
         copy($fileName, $this->getBinaryPathStorage($context)."/".$ID);

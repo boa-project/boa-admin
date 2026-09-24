@@ -114,9 +114,9 @@ class TaskManager {
         if( !isSet($_GET["action"]) && !isSet($_GET["get_action"])
             && !isSet($_POST["action"]) && !isSet($_POST["get_action"])
             && defined("APP_FORCE_SSL_REDIRECT") && APP_FORCE_SSL_REDIRECT === true
-            && $_SERVER['SERVER_PORT'] != 443) {
+            && ($_SERVER['SERVER_PORT'] ?? null) != 443) {
             header("HTTP/1.1 301 Moved Permanently");
-            header("Location: https://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']);
+            header("Location: https://".($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost').($_SERVER['REQUEST_URI'] ?? '/'));
             exit();
         }
 
@@ -133,7 +133,7 @@ class TaskManager {
         header("Pragma: no-cache");
 
         if(is_file(TESTS_RESULT_FILE)){
-            set_error_handler(array("\BoA\Core\Http\XMLWriter", "catchError"), E_ALL & ~E_NOTICE & ~E_STRICT );
+            set_error_handler(array("\BoA\Core\Http\XMLWriter", "catchError"), E_ALL & ~E_NOTICE & ~E_STRICT & ~E_DEPRECATED );
             set_exception_handler(array("\BoA\Core\Http\XMLWriter", "catchException"));
         }
 
@@ -162,10 +162,10 @@ class TaskManager {
             unset($_SESSION["SWITCH_BACK_REPO_ID"]);
         }
         $action = "ping";
-        if(preg_match('/MSIE 7/',$_SERVER['HTTP_USER_AGENT']) || preg_match('/MSIE 8/',$_SERVER['HTTP_USER_AGENT'])){
+        if(preg_match('/MSIE 7/',$_SERVER['HTTP_USER_AGENT'] ?? '') || preg_match('/MSIE 8/',$_SERVER['HTTP_USER_AGENT'] ?? '')){
             $action = "get_boot_gui";
         }else{
-            $action = (strpos($_SERVER["HTTP_ACCEPT"], "text/html") !== false ? "get_boot_gui" : "ping");
+            $action = (strpos($_SERVER["HTTP_ACCEPT"] ?? '', "text/html") !== false ? "get_boot_gui" : "ping");
         }
         if(isSet($_GET["action"]) || isSet($_GET["get_action"])) $action = (isset($_GET["get_action"])?$_GET["get_action"]:$_GET["action"]);
         else if(isSet($_POST["action"]) || isSet($_POST["get_action"])) $action = (isset($_POST["get_action"])?$_POST["get_action"]:$_POST["action"]);
