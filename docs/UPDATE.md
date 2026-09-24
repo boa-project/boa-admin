@@ -51,9 +51,12 @@ Add the resolution and failure handling from the sample. Typical placement:
    }
    ```
 
-2. **After** autoload registration and `use BoA\Core\Services\ConfService;` — abort if the secret is still missing:
+2. **After** `spl_autoload_register('APP_autoload');` — import `ConfService` (this `use` line is **new** in the sample; older installs often only had `Utils`) and abort if the secret is still missing:
 
    ```php
+   use BoA\Core\Services\ConfService;
+   use BoA\Core\Utils\Utils;
+
    if (!empty($__boaMissingSecret)) {
        $__boaMessage = ConfService::getCoreMessage('missing_app_secret_key');
        if (PHP_SAPI !== 'cli' && !headers_sent()) {
@@ -64,9 +67,18 @@ Add the resolution and failure handling from the sample. Typical placement:
    }
    ```
 
+   If your file already imports `Utils`, add only:
+
+   ```php
+   use BoA\Core\Services\ConfService;
+   ```
+
+   Place it next to the existing `use` statements, before the missing-secret check.
+
 #### Upgrade checklist for the secret
 
 - [ ] Ensure `APP_SECRET_KEY` is set (constant or environment variable) before restarting the application.
+- [ ] Add `use BoA\Core\Services\ConfService;` after autoload registration (required by the missing-secret check).
 - [ ] Prefer a long, random value; do not commit real secrets to version control.
 - [ ] If you already encrypt data with a given secret, **keep using the same key**. Changing it will prevent decryption of existing ciphertext.
 - [ ] After merging, confirm the app starts (web and CLI). A missing key returns HTTP 500 with a clear message in web requests, or prints the same message and exits in CLI.
