@@ -16,7 +16,7 @@ RewriteBase /
 RewriteRule ^boa/conf(/|$) - [F,L]
 RewriteRule ^data(/|$) - [F,L]
 RewriteRule (^|/)VERSION$ - [F,L]
-RewriteRule \.(sample|inc| Dist|sql|bak|old|orig)$ - [F,L,NC]
+RewriteRule \.(sample|inc|dist|sql|bak|old|orig)$ - [F,L,NC]
 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
