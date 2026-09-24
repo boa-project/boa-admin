@@ -1,7 +1,7 @@
 var fs = require('fs');
 var gulp = require('gulp');
 var uglify = require('gulp-uglify');
-var uglifycss = require('gulp-uglifycss');
+var cleanCSS = require('gulp-clean-css');
 var rename = require('gulp-rename');
 var concat = require('gulp-concat');
 var pump = require('pump');
@@ -57,7 +57,7 @@ gulp.task('themes-css', function(){
   return pump([
     gulp.src(getFilePaths(THEMESDIR+'allz_list.txt')),
     concat('allz.css'),
-    uglifycss({ uglyComments: true}),
+    cleanCSS({ level: { 1: { specialComments: 0 } } }),
     gulp.dest(THEMESDIR)
   ]);
 });
