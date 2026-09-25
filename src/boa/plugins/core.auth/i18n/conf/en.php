@@ -32,6 +32,10 @@ $mess=array(
 "Enable Users" => "Enable Users",
 "Guest Browsing" => "Guest Browsing",
 "Password length" => "Password length",
+"Remember Me Renew Days" => "Remember Me renew (days)",
+"When Remember Me is used, each successful login extends the remember cookie by this many days." => "When Remember Me is used, each successful login extends the remember cookie by this many days.",
+"Remember Me Max Days" => "Remember Me maximum (days)",
+"Absolute maximum lifetime of the Remember Me cookie from the first login that enabled it, regardless of renewals." => "Absolute maximum lifetime of the Remember Me cookie from the first login that enabled it, regardless of renewals.",
 "Store Credentials in Session" => "Store Credentials in Session",
 );
 ?>

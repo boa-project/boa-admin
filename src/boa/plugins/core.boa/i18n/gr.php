@@ -540,6 +540,18 @@ $mess=array(
 "475" => "Files shared amongst all users",
 "476" => "Your personal workspace",
 "477" => "Select a file or folder to see its details here",
+"482" => "Forgot password?",
+"483" => "Enter your login or email. If an account matches, we will send a reset link.",
+"484" => "Login / Email",
+"485" => "Enter your login or email.",
+"486" => "If that account exists, a reset email was sent.",
+"487" => "Reset password",
+"488" => "New password (min %s chars)",
+"489" => "Confirm password",
+"490" => "Set password",
+"491" => "Passwords do not match.",
+"492" => "Request failed.",
+"493" => "Verification failed. Please try again.",
 /* END SENTENCE */
 );
 ?>

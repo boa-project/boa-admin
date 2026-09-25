@@ -458,7 +458,12 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
                 $selectedItems = $selection->getFiles();
                 foreach($selectedItems as $selectedPath){
                     $newPath = $this->urlBase.$dest ."/". basename($selectedPath);
-                    $newNode = new ManifestNode($newPath);
+                    if(is_dir($newPath) && file_exists($newPath."/.manifest")){
+                        // Restored / moved DCO must keep mime and catalog metadata in the tree
+                        $newNode = $this->getExplorer()->getDcoManifestNode($newPath."/.manifest");
+                    }else{
+                        $newNode = new ManifestNode($newPath);
+                    }
                     $nodesDiffs["ADD"][] = $newNode;
                     if($action == "move") $nodesDiffs["REMOVE"][] = $selectedPath;
                 }
@@ -1632,6 +1637,11 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             $errors = array();
             $succFiles = array();
             if($move){
+                if(self::isLeavingRecycle($srcFile)){
+                    require_once(APP_PLUGINS_FOLDER."/access.dco/DcoRecycleManifests.class.php");
+                    // Restore names inside the package before rename so manifests travel intact
+                    DcoRecycleManifests::markRestored($realSrcFile);
+                }
                 Controller::applyHook("node.before_path_change", array(new ManifestNode($realSrcFile)));
                 if(file_exists($destFile)) $this->deldir($destFile);
                 $res = self::myRename($realSrcFile, $destFile);
@@ -1649,6 +1659,11 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         else
         {
             if($move){
+                if(self::isLeavingRecycle($srcFile)){
+                    require_once(APP_PLUGINS_FOLDER."/access.dco/DcoRecycleManifests.class.php");
+                    // Restore sibling .deleted.*.manifest so myRename moves them with the file
+                    DcoRecycleManifests::markRestored($realSrcFile);
+                }
                 Controller::applyHook("node.before_path_change", array(new ManifestNode($realSrcFile)));
                 if(file_exists($destFile)) unlink($destFile);
                 $res = self::myRename($realSrcFile, $destFile);
@@ -1684,6 +1699,8 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
             $messagePart = $mess[74]." ".SystemTextEncoding::toUTF8($destDir);
             if(RecycleBinManager::recycleEnabled() && $destDir == RecycleBinManager::getRelativeRecycle())
             {
+                require_once(APP_PLUGINS_FOLDER."/access.dco/DcoRecycleManifests.class.php");
+                DcoRecycleManifests::markDeleted($destFile);
                 RecycleBinManager::fileToRecycle($srcFile);
                 $messagePart = $mess[123]." ".$mess[122];
             }
@@ -1988,6 +2005,12 @@ class DcoAccessDriver extends AbstractAccessDriver implements FileWrapperProvide
         }
     }
 
+
+    private static function isLeavingRecycle($srcFile): bool
+    {
+        return RecycleBinManager::recycleEnabled()
+            && dirname($srcFile) == RecycleBinManager::getRelativeRecycle();
+    }
 
     /****
     Utilitary methods

@@ -162,8 +162,8 @@ function parseUrl(data) {
 }
 
 
-function storeRememberData(user, pass){
-	setAppCookie('remember', {user:user,pass:pass});
+function storeRememberData(user, pass, expiresSeconds){
+	setAppCookie('remember', {user:user,pass:pass}, expiresSeconds);
 }
 
 function retrieveRememberData(){
@@ -174,9 +174,25 @@ function clearRememberData(){
 	deleteAppCookie('remember');
 }
 
-function setAppCookie(name, value){
+function rememberMeDefaultExpires(){
+	var renewDays = 5;
+	var maxDays = 60;
+	if(window._bootstrap && window._bootstrap.parameters){
+		var r = parseInt(window._bootstrap.parameters.get('remember_me_renew_days'), 10);
+		var m = parseInt(window._bootstrap.parameters.get('remember_me_days'), 10);
+		if(r > 0) renewDays = r;
+		if(m > 0) maxDays = m;
+	}
+	return Math.min(renewDays, maxDays) * 86400;
+}
+
+function setAppCookie(name, value, expiresSeconds){
+	var expires = parseInt(expiresSeconds, 10);
+	if(!(expires > 0)){
+		expires = rememberMeDefaultExpires();
+	}
 	var cookieJar = new CookieJar({
-		expires: 3600*24*10,
+		expires: expires,
 		path: '/',
 		secure: true
 	});

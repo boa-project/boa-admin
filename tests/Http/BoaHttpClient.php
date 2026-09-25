@@ -61,6 +61,48 @@ final class BoaHttpClient
     }
 
     /**
+     * Fetch an ALTCHA challenge and return a base64 payload, or null if disabled/unavailable.
+     */
+    public function solveAltcha(string $target = 'login'): ?string
+    {
+        $response = $this->get([
+            'get_action' => 'get_altcha_challenge',
+            'target' => $target,
+        ], false);
+        $data = json_decode($response['body'], true);
+        if (!is_array($data) || !empty($data['disabled']) || empty($data['challengejson'])) {
+            return null;
+        }
+        $challenge = json_decode($data['challengejson'], true);
+        if (!is_array($challenge)) {
+            return null;
+        }
+        $algorithm = (string) ($challenge['algorithm'] ?? 'SHA-256');
+        $chal = (string) ($challenge['challenge'] ?? '');
+        $salt = (string) ($challenge['salt'] ?? '');
+        $signature = (string) ($challenge['signature'] ?? '');
+        $max = (int) ($challenge['maxnumber'] ?? $challenge['maxNumber'] ?? 100000);
+        for ($n = 0; $n <= $max; $n++) {
+            $hash = match ($algorithm) {
+                'SHA-1' => hash('sha1', $salt . $n),
+                'SHA-512' => hash('sha512', $salt . $n),
+                default => hash('sha256', $salt . $n),
+            };
+            if (hash_equals($chal, $hash)) {
+                $payload = array(
+                    'algorithm' => $algorithm,
+                    'challenge' => $chal,
+                    'number' => $n,
+                    'salt' => $salt,
+                    'signature' => $signature,
+                );
+                return base64_encode(json_encode($payload, JSON_UNESCAPED_SLASHES) ?: '');
+            }
+        }
+        return null;
+    }
+
+    /**
      * @param array<string, scalar|null> $query
      * @return array{http_code:int,body:string,content_type:string}
      */

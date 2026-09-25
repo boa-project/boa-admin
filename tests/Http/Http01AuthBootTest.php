@@ -74,14 +74,19 @@ final class Http01AuthBootTest extends AbstractHttpEndpointTest
         $password = getenv('BOA_TEST_PASSWORD') ?: 'admin';
 
         $attempt = function () use ($user, $password): array {
+            $form = [
+                'userid' => $user,
+                'password' => $password,
+                'login_seed' => '-1',
+                'secure_token' => $this->client()->secureToken() ?? $this->client()->getSecureToken(),
+            ];
+            $altcha = $this->client()->solveAltcha('login');
+            if ($altcha !== null) {
+                $form['boa_altcha'] = $altcha;
+            }
             return $this->postAction(
                 'login',
-                [
-                    'userid' => $user,
-                    'password' => $password,
-                    'login_seed' => '-1',
-                    'secure_token' => $this->client()->secureToken() ?? $this->client()->getSecureToken(),
-                ],
+                $form,
                 [],
                 false,
                 'get_action'
@@ -123,14 +128,48 @@ final class Http01AuthBootTest extends AbstractHttpEndpointTest
     public function test_post_forgot_password_unknown_user_expected_app_response(): void
     {
         $this->skipUnlessLoggedIn();
-        // Still logged in; endpoint should not throw PHP faults even for unknown users.
+        $form = ['userid' => 'http_test_unknown_user_' . HttpSharedState::runId()];
+        $altcha = $this->client()->solveAltcha('forgot');
+        if ($altcha !== null) {
+            $form['boa_altcha'] = $altcha;
+        }
         $response = $this->postAction(
             'forgot_password',
-            ['userid' => 'http_test_unknown_user_' . HttpSharedState::runId()],
+            $form,
             [],
             true,
             'get_action'
         );
         HttpAssertions::assertNoUnhandledPhpFault($response);
+    }
+
+    /** @depends test_get_get_secure_token_authenticated */
+    public function test_post_login_without_altcha_rejected_when_enabled(): void
+    {
+        $probe = $this->getAction('get_altcha_challenge', ['target' => 'login'], false);
+        $data = json_decode($probe['body'], true);
+        if (!is_array($data) || !empty($data['disabled']) || empty($data['ok'])) {
+            $this->markTestSkipped('ALTCHA not active on this instance');
+        }
+        $user = getenv('BOA_TEST_USER') ?: 'admin';
+        $password = getenv('BOA_TEST_PASSWORD') ?: 'admin';
+        $anon = new BoaHttpClient($this->client()->baseUrl());
+        $anon->getSecureToken();
+        $response = $anon->post(
+            [],
+            [
+                'get_action' => 'login',
+                'userid' => $user,
+                'password' => $password,
+                'login_seed' => '-1',
+            ],
+            false
+        );
+        HttpAssertions::assertNoUnhandledPhpFault($response);
+        $this->assertMatchesRegularExpression(
+            '/logging_result[^>]*value="-6"/',
+            $response['body'],
+            'Interactive login without ALTCHA should fail with -6 when enabled'
+        );
     }
 }

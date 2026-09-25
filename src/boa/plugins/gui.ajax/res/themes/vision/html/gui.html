@@ -9,6 +9,8 @@
         <link rel="stylesheet" href="plugins/gui.ajax/res/themes/vision/css/font-awesome.css"/>
         <link rel="stylesheet" href="plugins/gui.ajax/res/themes/vision/css/media.css"/>
         <script language="javascript" type="text/javascript" src="APP_CLIENT_RESOURCES_FOLDER/js/app_boot.js?v=APP_CURRENT_VERSION"></script>
+	<script language="javascript" type="text/javascript" src="boa/plugins/action.altcha/res/boaAltcha.js?v=APP_CURRENT_VERSION"></script>
+	<script type="module" src="boa/plugins/action.altcha/res/altcha.min.js?v=APP_CURRENT_VERSION"></script>
 	</head>
 	<body bgcolor="#FFFFFF" text="#000000" marginheight="0" marginwidth="0" leftmargin="0" topmargin="0"  style="overflow:hidden;">		
 		<script type="text/javascript">
@@ -29,7 +31,7 @@
 			<div id="hidden_forms" style="position:absolute;left:-1000px;"></div>	
 			
 			<!-- LOGIN SCREEN MUST BE ALREADY IN PAGE TO ENABLE PASSWORD REMEMBERING -->
-			<form id="login_form" action="login" style="display:none;" box_width="230" overlayStyle='{"backgroundColor":"white","opacity":10,"backgroundImage":"url(\"APP_THEME_FOLDER/images/grid_t.png\")"}'>
+			<form id="login_form" action="login" style="display:none;" box_width="300" overlayStyle='{"backgroundColor":"white","opacity":10,"backgroundImage":"url(\"APP_THEME_FOLDER/images/grid_t.png\")"}'>
 				<input type="hidden" name="get_action" value="login">
 				<input type="hidden" name="login_seed" id="login_seed" value="">
 		 	   	<a style="float:right;font-size: 16px;" href="javascript:app.actionBar.fireAction('switch_language');" title="APP_MESSAGE[190]" alt="APP_MESSAGE[190]" class="icon-flag">&nbsp;</a>
@@ -45,6 +47,10 @@
 					</div>
 					<div class="SF_element">
 						<input type="checkbox" class="radio" name="remember_me" style="border: none; width:20px !important;"/><app:message message_id="261">APP_MESSAGE[261]</app:message>
+					</div>
+					<div class="SF_element boa-altcha-slot"></div>
+					<div class="SF_element" style="margin-top:6px;">
+						<a href="javascript:app.actionBar.fireAction('forgot_password');" style="font-size:11px;" message_id="482">APP_MESSAGE[482]</a>
 					</div>
 				</div>
 			</form>

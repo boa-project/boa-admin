@@ -620,13 +620,17 @@ class XMLWriter
      * @param string $rememberLogin
      * @param string $rememberPass
      * @param string $secureToken
+     * @param int $rememberExpires Seconds remaining for remember-me JS cookie
      * @return void
      */
-	static function loggingResult($result, $rememberLogin="", $rememberPass = "", $secureToken="")
+	static function loggingResult($result, $rememberLogin="", $rememberPass = "", $secureToken="", $rememberExpires = 0)
 	{
 		$remString = "";
 		if($rememberPass != "" && $rememberLogin!= ""){
 			$remString = " remember_login=\"$rememberLogin\" remember_pass=\"$rememberPass\"";
+			if(intval($rememberExpires) > 0){
+				$remString .= " remember_expires=\"".intval($rememberExpires)."\"";
+			}
 		}
 		if($secureToken != ""){
 			$remString .= " secure_token=\"$secureToken\"";

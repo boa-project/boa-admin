@@ -62,15 +62,25 @@ class AbstractAuthDriver extends Plugin {
                 if(!AuthService::usersEnabled()) return;
                 $rememberLogin = "";
                 $rememberPass = "";
+                $rememberExpires = 0;
                 $secureToken = "";
                 $loggedUser = null;
-        		if(AuthService::suspectBruteForceLogin() && (!isSet($httpVars["captcha_code"]) || !CaptchaProvider::checkCaptchaResult($httpVars["captcha_code"]))){
+                $cookieLogin = (isSet($httpVars["cookie_login"])?true:false);
+                $altchaOk = true;
+                if(!$cookieLogin && class_exists('\\BoA\\Plugins\\Action\\Altcha\\AltchaCenter')
+                    && \BoA\Plugins\Action\Altcha\AltchaCenter::isProtectionActive()){
+                    $altchaOk = \BoA\Plugins\Action\Altcha\AltchaCenter::verify('login', $httpVars);
+                }
+                $useImageCaptcha = !class_exists('\\BoA\\Plugins\\Action\\Altcha\\AltchaCenter')
+                    || !\BoA\Plugins\Action\Altcha\AltchaCenter::isProtectionActive();
+        		if(!$altchaOk){
+        			$loggingResult = -6;
+        		}else if($useImageCaptcha && AuthService::suspectBruteForceLogin() && (!isSet($httpVars["captcha_code"]) || !CaptchaProvider::checkCaptchaResult($httpVars["captcha_code"]))){
         			$loggingResult = -4;
         		}else{
         			$userId = (isSet($httpVars["userid"])?$httpVars["userid"] ?? "":null);
         			$userPass = (isSet($httpVars["password"])?$httpVars["password"] ?? "":null);
         			$rememberMe = ((isSet($httpVars["remember_me"]) && ($httpVars["remember_me"] ?? "") == "true")?true:false);
-        			$cookieLogin = (isSet($httpVars["cookie_login"])?true:false);
         			$loggingResult = AuthService::logUser($userId, $userPass, false, $cookieLogin, $httpVars["login_seed"] ?? "");
         			if($rememberMe && $loggingResult == 1){
         				$rememberLogin = "notify";
@@ -81,7 +91,7 @@ class AbstractAuthDriver extends Plugin {
         				session_regenerate_id(true);
         				$secureToken = AuthService::generateSecureToken();
         			}
-        			if($loggingResult < 1 && AuthService::suspectBruteForceLogin()){
+        			if($useImageCaptcha && $loggingResult < 1 && AuthService::suspectBruteForceLogin()){
         				$loggingResult = -4; // Force captcha reload
         			}
         		}
@@ -102,11 +112,16 @@ class AbstractAuthDriver extends Plugin {
                        }
                	}
 
-                if($loggedUser != null && (AuthService::hasRememberCookie() || (isSet($rememberMe) && $rememberMe ==true))){
-                    AuthService::refreshRememberCookie($loggedUser);
+                if($loggedUser != null && $loggingResult == 1 && (AuthService::hasRememberCookie() || (isSet($rememberMe) && $rememberMe ==true))){
+                    $rememberExpires = AuthService::refreshRememberCookie($loggedUser);
+                    $rememberLogin = "notify";
+                    $rememberPass = "notify";
+                }
+                if($loggingResult == -5){
+                    // Expired / missing remember cookie: drop JS flag too via client.
                 }
         		XMLWriter::header();
-        		XMLWriter::loggingResult($loggingResult, $rememberLogin, $rememberPass, $secureToken);
+        		XMLWriter::loggingResult($loggingResult, $rememberLogin, $rememberPass, $secureToken, $rememberExpires);
         		XMLWriter::close();
 
 
@@ -151,6 +166,14 @@ class AbstractAuthDriver extends Plugin {
 			//	FORGOT / RESET PASSWORD (email)
 			//------------------------------------
 			case "forgot_password":
+				if (class_exists('\\BoA\\Plugins\\Action\\Altcha\\AltchaCenter')
+					&& \BoA\Plugins\Action\Altcha\AltchaCenter::isProtectionActive()
+					&& !\BoA\Plugins\Action\Altcha\AltchaCenter::verify('forgot', $httpVars)) {
+					HTMLWriter::charsetHeader('application/json');
+					$failMsg = isSet($mess[493]) ? $mess[493] : 'Verification failed.';
+					print json_encode(array('ok' => false, 'message' => $failMsg));
+					break;
+				}
 				$loginOrEmail = "";
 				if (isSet($httpVars["login_or_email"])) {
 					$loginOrEmail = $httpVars["login_or_email"] ?? "";
@@ -165,6 +188,14 @@ class AbstractAuthDriver extends Plugin {
 			break;
 
 			case "reset_password":
+				if (class_exists('\\BoA\\Plugins\\Action\\Altcha\\AltchaCenter')
+					&& \BoA\Plugins\Action\Altcha\AltchaCenter::isProtectionActive()
+					&& !\BoA\Plugins\Action\Altcha\AltchaCenter::verify('reset', $httpVars)) {
+					HTMLWriter::charsetHeader('application/json');
+					$failMsg = isSet($mess[493]) ? $mess[493] : 'Verification failed.';
+					print json_encode(array('ok' => false, 'message' => $failMsg));
+					break;
+				}
 				$userId = isSet($httpVars["user"]) ? $httpVars["user"] ?? "" : (isSet($httpVars["userid"]) ? $httpVars["userid"] ?? "" : "");
 				$token = isSet($httpVars["token"]) ? $httpVars["token"] ?? "" : "";
 				$newPass = isSet($httpVars["new_pass"]) ? $httpVars["new_pass"] ?? "" : "";
@@ -180,20 +211,38 @@ class AbstractAuthDriver extends Plugin {
 				if ($minLen < 1) {
 					$minLen = 8;
 				}
+				$title = isSet($mess[487]) ? $mess[487] : 'Reset password';
+				$labelNew = isSet($mess[488]) ? sprintf($mess[488], $minLen) : ('New password (min '.$minLen.' chars)');
+				$labelConfirm = isSet($mess[489]) ? $mess[489] : 'Confirm password';
+				$btnSet = isSet($mess[490]) ? $mess[490] : 'Set password';
+				$msgMismatch = isSet($mess[491]) ? $mess[491] : 'Passwords do not match.';
+				$msgFail = isSet($mess[492]) ? $mess[492] : 'Request failed.';
+				$msgVerify = isSet($mess[493]) ? $mess[493] : 'Verification failed.';
 				HTMLWriter::charsetHeader('text/html');
-				echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reset password</title>';
-				echo '<style>body{font-family:sans-serif;max-width:28em;margin:3em auto;padding:0 1em;}label{display:block;margin:.8em 0 .2em;}input{width:100%;padding:.4em;box-sizing:border-box;}button{margin-top:1em;padding:.5em 1em;}#msg{margin-top:1em;}</style>';
-				echo '</head><body><h1>Reset password</h1>';
+				echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'.htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'</title>';
+				echo '<style>body{font-family:sans-serif;max-width:28em;margin:3em auto;padding:0 1em;}label{display:block;margin:.8em 0 .2em;}input{width:100%;padding:.4em;box-sizing:border-box;}button{margin-top:1em;padding:.5em 1em;}#msg{margin-top:1em;}.boa-altcha-slot{margin-top:1em;}</style>';
+				$plugRes = (defined('APP_PLUGINS_FOLDER_REL') ? APP_PLUGINS_FOLDER_REL : 'boa/plugins').'/action.altcha/res';
+				echo '<script type="module" src="'.htmlspecialchars($plugRes, ENT_QUOTES, 'UTF-8').'/altcha.min.js"></script>';
+				echo '<script src="'.htmlspecialchars($plugRes, ENT_QUOTES, 'UTF-8').'/boaAltcha.js"></script>';
+				echo '</head><body><h1>'.htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'</h1>';
 				echo '<form id="reset_form" method="post" action="'.APP_SERVER_ACCESS.'">';
 				echo '<input type="hidden" name="get_action" value="reset_password"/>';
 				echo '<input type="hidden" name="user" value="'.$userId.'"/>';
 				echo '<input type="hidden" name="token" value="'.$token.'"/>';
-				echo '<label for="new_pass">New password (min '.$minLen.' chars)</label>';
+				echo '<label for="new_pass">'.htmlspecialchars($labelNew, ENT_QUOTES, 'UTF-8').'</label>';
 				echo '<input id="new_pass" name="new_pass" type="password" autocomplete="new-password" required minlength="'.$minLen.'"/>';
-				echo '<label for="new_pass2">Confirm password</label>';
+				echo '<label for="new_pass2">'.htmlspecialchars($labelConfirm, ENT_QUOTES, 'UTF-8').'</label>';
 				echo '<input id="new_pass2" type="password" autocomplete="new-password" required minlength="'.$minLen.'"/>';
-				echo '<button type="submit">Set password</button></form><div id="msg"></div>';
-				echo '<script>(function(){var f=document.getElementById("reset_form");f.addEventListener("submit",function(e){e.preventDefault();var p=document.getElementById("new_pass").value,p2=document.getElementById("new_pass2").value,m=document.getElementById("msg");if(p!==p2){m.textContent="Passwords do not match.";return;}var fd=new FormData(f);fetch(f.action,{method:"POST",body:fd,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(j){m.textContent=j.message||(j.ok?"Done.":"Error");if(j.ok){f.style.display="none";setTimeout(function(){location.href="'.APP_SERVER_ACCESS.'";},1500);}}).catch(function(){m.textContent="Request failed.";});});})();</script>';
+				echo '<div class="boa-altcha-slot" id="reset_altcha_slot"></div>';
+				echo '<button type="submit">'.htmlspecialchars($btnSet, ENT_QUOTES, 'UTF-8').'</button></form><div id="msg"></div>';
+				$jsMismatch = json_encode($msgMismatch);
+				$jsFail = json_encode($msgFail);
+				$serverAccess = json_encode(APP_SERVER_ACCESS);
+				echo '<script>(function(){var f=document.getElementById("reset_form");var mismatch='.$jsMismatch.';var fail='.$jsFail.';var home='.$serverAccess.';';
+				echo 'function ensureAltcha(){if(window.boaAltcha){boaAltcha.attach(f,"reset");}else{setTimeout(ensureAltcha,50);}}ensureAltcha();';
+				echo 'f.addEventListener("submit",function(e){e.preventDefault();var p=document.getElementById("new_pass").value,p2=document.getElementById("new_pass2").value,m=document.getElementById("msg");if(p!==p2){m.textContent=mismatch;return;}var fd=new FormData(f);';
+				echo 'if(window.boaAltcha){var alt=boaAltcha.getPayload(f,"reset");if(!alt){m.textContent=fail;boaAltcha.attach(f,"reset");return;}fd.set("boa_altcha",alt);}';
+				echo 'fetch(f.action,{method:"POST",body:fd,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(j){m.textContent=j.message||(j.ok?"Done.":"Error");if(j.ok){f.style.display="none";setTimeout(function(){location.href=home;},1500);}else if(window.boaAltcha){boaAltcha.attach(f,"reset");}}).catch(function(){m.textContent=fail;});});})();</script>';
 				echo '</body></html>';
 			break;
 

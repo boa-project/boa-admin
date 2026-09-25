@@ -238,15 +238,113 @@ class AuthService
 
     /**
      * @static
+     * @return int
+     */
+    static function getRememberMeRenewDays(){
+        $days = intval(ConfService::getCoreConf("REMEMBER_ME_RENEW_DAYS", "auth"));
+        return $days < 1 ? 5 : $days;
+    }
+
+    /**
+     * @static
+     * @return int
+     */
+    static function getRememberMeMaxDays(){
+        $days = intval(ConfService::getCoreConf("REMEMBER_ME_DAYS", "auth"));
+        return $days < 1 ? 60 : $days;
+    }
+
+    /**
+     * Parse App-Remember-Cookie into parts. Format: userId:hash:issuedAt:renewedAt
+     * Legacy userId:hash is accepted and timestamps default to now (rewritten on refresh).
+     * @static
+     * @return array{userId:string,hash:string,issuedAt:int,renewedAt:int}|null
+     */
+    static function parseRememberCookie(){
+        $current = $_COOKIE[self::REMEMBER_COOKIE_NAME] ?? '';
+        if ($current === '') {
+            return null;
+        }
+        $parts = explode(':', $current, 4);
+        if (count($parts) < 2 || $parts[0] === '' || $parts[1] === '') {
+            return null;
+        }
+        $now = time();
+        $issuedAt = (count($parts) >= 3 && ctype_digit((string)$parts[2])) ? intval($parts[2]) : $now;
+        $renewedAt = (count($parts) >= 4 && ctype_digit((string)$parts[3])) ? intval($parts[3]) : $issuedAt;
+        return array(
+            'userId' => $parts[0],
+            'hash' => $parts[1],
+            'issuedAt' => $issuedAt,
+            'renewedAt' => $renewedAt
+        );
+    }
+
+    /**
+     * Effective cookie expiry: min(renewedAt + renewDays, issuedAt + maxDays).
+     * @static
+     * @param int $issuedAt
+     * @param int $renewedAt
+     * @return int unix timestamp
+     */
+    static function rememberCookieExpiresAt($issuedAt, $renewedAt){
+        $renewUntil = intval($renewedAt) + self::getRememberMeRenewDays() * 86400;
+        $maxUntil = intval($issuedAt) + self::getRememberMeMaxDays() * 86400;
+        return min($renewUntil, $maxUntil);
+    }
+
+    /**
+     * @static
+     * @param int $issuedAt
+     * @param int $renewedAt
+     * @return bool
+     */
+    static function isRememberCookieExpired($issuedAt, $renewedAt){
+        return time() > self::rememberCookieExpiresAt($issuedAt, $renewedAt);
+    }
+
+    /**
+     * @static
+     * @param string $value
+     * @param int $expires
+     * @return void
+     */
+    static function setRememberCookieValue($value, $expires){
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443)
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+        setcookie(self::REMEMBER_COOKIE_NAME, $value, array(
+            'expires' => $expires,
+            'path' => '/',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ));
+    }
+
+    /**
+     * @static
      * @param AbstractUser $user
+     * @return int Seconds remaining until cookie expiry (for JS flag cookie).
      */
     static function refreshRememberCookie($user){
-        $current = $_COOKIE[self::REMEMBER_COOKIE_NAME] ?? '';
-        if(!empty($current)){
-            $user->invalidateCookieString(substr($current, strpos($current, ":")+1));
+        $now = time();
+        $issuedAt = $now;
+        $current = self::parseRememberCookie();
+        if ($current !== null) {
+            $user->invalidateCookieString($current['hash']);
+            if (!self::isRememberCookieExpired($current['issuedAt'], $current['renewedAt'])) {
+                $issuedAt = $current['issuedAt'];
+            }
         }
         $rememberPass = $user->getCookieString();
-        setcookie(self::REMEMBER_COOKIE_NAME, $user->id.":".$rememberPass, time()+3600*24*10);
+        $renewedAt = $now;
+        $expires = self::rememberCookieExpiresAt($issuedAt, $renewedAt);
+        $value = $user->id . ':' . $rememberPass . ':' . $issuedAt . ':' . $renewedAt;
+        self::setRememberCookieValue($value, $expires);
+        $_COOKIE[self::REMEMBER_COOKIE_NAME] = $value;
+        $remaining = $expires - $now;
+        return $remaining > 0 ? $remaining : 0;
     }
 
     /**
@@ -262,12 +360,13 @@ class AuthService
      * Warning, must be called before sending other headers!
      */
     static function clearRememberCookie(){
-        $current = $_COOKIE[self::REMEMBER_COOKIE_NAME] ?? '';
+        $current = self::parseRememberCookie();
         $user = AuthService::getLoggedUser();
-        if(!empty($current) && $user != null){
-            $user->invalidateCookieString(substr($current, strpos($current, ":")+1));
+        if ($current !== null && $user != null) {
+            $user->invalidateCookieString($current['hash']);
         }
-        setcookie(self::REMEMBER_COOKIE_NAME, "", time()-3600);
+        self::setRememberCookieValue('', time() - 3600);
+        unset($_COOKIE[self::REMEMBER_COOKIE_NAME]);
     }
 
     static function logTemporaryUser($parentUserId, $temporaryUserId){
@@ -314,7 +413,13 @@ class AuthService
             return -5; // SILENT IGNORE
         }
         if($cookieLogin){
-            list($user_id, $pwd) = explode(":", $_COOKIE[self::REMEMBER_COOKIE_NAME]);
+            $parsed = self::parseRememberCookie();
+            if ($parsed === null || self::isRememberCookieExpired($parsed['issuedAt'], $parsed['renewedAt'])) {
+                self::clearRememberCookie();
+                return -5;
+            }
+            $user_id = $parsed['userId'];
+            $pwd = $parsed['hash'];
         }
         $confDriver = ConfService::getConfStorageImpl();
         if($user_id == null)
@@ -766,8 +871,8 @@ class AuthService
      */
     static function requestPasswordReset($loginOrEmail){
         $userId = AuthService::resolveUserIdByLoginOrEmail($loginOrEmail);
-        // Uniform response for unknown users.
-        $generic = array('ok' => true, 'message' => 'If that account exists, a reset email was sent.');
+        $messages = ConfService::getMessages();
+        $generic = array('ok' => true, 'message' => isSet($messages[486]) ? $messages[486] : 'If that account exists, a reset email was sent.');
         if ($userId === null || AuthService::isReservedUserId($userId)) {
             return $generic;
         }

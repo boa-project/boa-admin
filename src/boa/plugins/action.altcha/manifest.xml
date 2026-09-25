@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin name="altcha" label="CONF_MESSAGE[ALTCHA]" description="CONF_MESSAGE[Proof-of-work captcha for login and password recovery]" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="file:../core.boa/registry.xsd">
+    <class_definition classname="BoA\Plugins\Action\Altcha\AltchaCenter" filename="action.altcha/AltchaCenter.class.php"/>
+    <server_settings>
+        <global_param name="ENABLED" group="CONF_MESSAGE[ALTCHA]" type="boolean" label="CONF_MESSAGE[Enable ALTCHA]" description="CONF_MESSAGE[Require ALTCHA verification on interactive login and password recovery forms.]" mandatory="true" default="true"/>
+        <global_param name="LEVEL" group="CONF_MESSAGE[ALTCHA]" type="select" choices="100000|CONF_MESSAGE[Low],200000|CONF_MESSAGE[Basic],500000|CONF_MESSAGE[High],1000000|CONF_MESSAGE[Very high]" label="CONF_MESSAGE[Difficulty]" description="CONF_MESSAGE[Higher levels take longer to solve and are harder for bots.]" mandatory="true" default="100000"/>
+        <global_param name="VALID_TIME" group="CONF_MESSAGE[ALTCHA]" type="select" choices="10S|CONF_MESSAGE[10 seconds],20S|CONF_MESSAGE[20 seconds],40S|CONF_MESSAGE[40 seconds],1M|CONF_MESSAGE[1 minute],2M|CONF_MESSAGE[2 minutes],5M|CONF_MESSAGE[5 minutes]" label="CONF_MESSAGE[Challenge validity]" description="CONF_MESSAGE[How long a solved challenge remains valid.]" mandatory="true" default="2M"/>
+    </server_settings>
+    <client_settings>
+        <resources>
+            <i18n namespace="altcha" path="action.altcha/i18n"/>
+            <js file="plugins/action.altcha/res/boaAltcha.js" className="boaAltcha" autoload="true"/>
+        </resources>
+    </client_settings>
+    <registry_contributions>
+        <actions>
+            <action name="get_altcha_challenge" skipSecureToken="true">
+                <processing>
+                    <serverCallback methodName="switchAction"/>
+                </processing>
+            </action>
+        </actions>
+    </registry_contributions>
+</plugin>

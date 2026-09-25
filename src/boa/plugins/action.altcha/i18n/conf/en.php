@@ -1,0 +1,21 @@
+<?php
+$mess = array(
+"ALTCHA" => "ALTCHA",
+"Proof-of-work captcha for login and password recovery" => "Proof-of-work captcha for login and password recovery",
+"Enable ALTCHA" => "Enable ALTCHA",
+"Require ALTCHA verification on interactive login and password recovery forms." => "Require ALTCHA verification on interactive login and password recovery forms.",
+"Difficulty" => "Difficulty",
+"Higher levels take longer to solve and are harder for bots." => "Higher levels take longer to solve and are harder for bots.",
+"Low" => "Low",
+"Basic" => "Basic",
+"High" => "High",
+"Very high" => "Very high",
+"Challenge validity" => "Challenge validity",
+"How long a solved challenge remains valid." => "How long a solved challenge remains valid.",
+"10 seconds" => "10 seconds",
+"20 seconds" => "20 seconds",
+"40 seconds" => "40 seconds",
+"1 minute" => "1 minute",
+"2 minutes" => "2 minutes",
+"5 minutes" => "5 minutes",
+);

@@ -9,6 +9,8 @@
 		<link rel="stylesheet" href="plugins/gui.ajax/res/themes/umbra/css/font-awesome.css"/>
 		<link rel="stylesheet" type="text/css" href="APP_THEME_FOLDER/css/allz.css?v=APP_CURRENT_VERSION">
 		<script language="javascript" type="text/javascript" src="APP_CLIENT_RESOURCES_FOLDER/js/app_boot.js?v=APP_CURRENT_VERSION"></script>
+	<script language="javascript" type="text/javascript" src="boa/plugins/action.altcha/res/boaAltcha.js?v=APP_CURRENT_VERSION"></script>
+	<script type="module" src="boa/plugins/action.altcha/res/altcha.min.js?v=APP_CURRENT_VERSION"></script>
 	</head>
 	<body bgcolor="#FFFFFF" text="#000000" marginheight="0" marginwidth="0" leftmargin="0" topmargin="0"  style="overflow:hidden;">		
 		<script type="text/javascript">
@@ -25,7 +27,7 @@
 			<div id="hidden_forms" style="position:absolute;left:-1000px;"></div>	
 			
 			<!-- LOGIN SCREEN MUST BE ALREADY IN PAGE TO ENABLE PASSWORD REMEMBERING -->
-			<form id="login_form" action="login" style="display:none;" box_width="230">
+			<form id="login_form" action="login" style="display:none;" box_width="300">
 				<input type="hidden" name="get_action" value="login">
 				<input type="hidden" name="login_seed" id="login_seed" value="">
 		 	   	<a style="float:right;" href="javascript:app.actionBar.fireAction('switch_language');" title="APP_MESSAGE[190]" alt="APP_MESSAGE[190]"><img src="APP_THEME_FOLDER/images/actions/16/flag.png" border="0" height="16" width="16"></a>
@@ -41,6 +43,10 @@
 					</div>
 					<div class="SF_element">
 						<input type="checkbox" class="radio" name="remember_me" style="border: none; width:20px !important;"/><gui:message message_id="261">APP_MESSAGE[261]</gui:message>
+					</div>
+					<div class="SF_element boa-altcha-slot"></div>
+					<div class="SF_element" style="margin-top:6px;">
+						<a href="javascript:app.actionBar.fireAction('forgot_password');" style="font-size:11px;" message_id="482">APP_MESSAGE[482]</a>
 					</div>
 				</div>
 			</form>

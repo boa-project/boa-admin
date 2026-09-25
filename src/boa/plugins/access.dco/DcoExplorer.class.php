@@ -107,13 +107,34 @@ class DcoExplorer{
         $type_string = $driver->mess["access_dco.dco_type"];
         $author_string = $driver->mess["access_dco.dco_author"];
         $status_string = $driver->mess["access_dco.dco_status"] ?? "Status";
-        XMLWriter::header();        
+
+        $metaData = array();
+        if(RecycleBinManager::recycleEnabled()){
+            $metaData["repo_has_recycle"] = "true";
+        }
+        $parentManifestNode = new ManifestNode(Utils::arrayGet($options, "nonPatchedPath"), $metaData);
+        $parentManifestNode->loadNodeInfo(false, true, "minimal");
+        Controller::applyHook("node.read", array(&$parentManifestNode));
+        XMLWriter::renderManifestHeaderNode($parentManifestNode);
+
         XMLWriter::sendFilesListComponentConfig('<columns switchDisplayMode="detail" switchGridMode="filelist"><column messageString="'.$title_string.'" attributeName="APP_label" sortType="String"/><column messageString="'.$type_string.'" attributeName="type" sortType="String"/><column messageString="'.$author_string.'" attributeName="author" sortType="String"/><column messageString="'.$status_string.'" attributeName="status" sortType="String" additionalText="date:lastpublished"/></columns>');
         //<column messageString="'.$contype_string.'" attributeName="conexion_type" sortType="String"/>
         foreach ($objects as $dco){
             $dco->loadNodeInfo(false, false, "all");
             XmlWriter::renderManifestNode($dco);
         }
+
+        // ADD RECYCLE BIN TO THE LIST (same pattern as access.fs)
+        if(RecycleBinManager::recycleEnabled() && Utils::arrayGet($driver->driverConf, "HIDE_RECYCLE") !== true)
+        {
+            $recycleBinOption = RecycleBinManager::getRelativeRecycle();
+            if(file_exists($driver->urlBase.$recycleBinOption)){
+                $recycleNode = new ManifestNode($driver->urlBase.$recycleBinOption);
+                $recycleNode->loadNodeInfo();
+                XMLWriter::renderManifestNode($recycleNode);
+            }
+        }
+
         $this->renderPagination($options, $totalPages, $crtPage, $countFiles);
         XMLWriter::close();
     }
@@ -245,11 +266,13 @@ class DcoExplorer{
         }
 
         $metaData = array();
-        if(RecycleBinManager::recycleEnabled() && $dir == ""){
-            $metaData["repo_has_recycle"] = "true";
-        }
-        
-        if ("/".basename($path) === $dir){
+        $isRecycleDir = RecycleBinManager::recycleEnabled()
+            && $dir == RecycleBinManager::getRelativeRecycle();
+        $isDcoRoot = !$isRecycleDir
+            && "/".basename($path) === $dir
+            && file_exists($path."/.manifest");
+
+        if ($isDcoRoot){
             $parentManifestNode = $this->getDcoManifestNode($path."/.manifest"); //$entries[0]
         }
         else{
@@ -301,9 +324,6 @@ class DcoExplorer{
             }
             $isLeaf = "";
             if(!$driver->filterNodeName($path, $nodeName, $isLeaf, $lsOptions)){
-                continue;
-            }
-            if(RecycleBinManager::recycleEnabled() && $dir == "" && "/".$nodeName == RecycleBinManager::getRecyclePath()){
                 continue;
             }
 
@@ -373,17 +393,6 @@ class DcoExplorer{
         }
         array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), Utils::arrayGet($fullList, "z"));
         array_map(array("BoA\Core\Http\XMLWriter", "renderManifestNode"), Utils::arrayGet($fullList, "f"));
-
-        // ADD RECYCLE BIN TO THE LIST
-        if($dir == ""  && !$uniqueFile && RecycleBinManager::recycleEnabled() && Utils::arrayGet($driver->driverConf, "HIDE_RECYCLE") !== true)
-        {
-            $recycleBinOption = RecycleBinManager::getRelativeRecycle();
-            if(file_exists($driver->urlBase.$recycleBinOption)){
-                $recycleNode = new ManifestNode($driver->urlBase.$recycleBinOption);
-                $recycleNode->loadNodeInfo();
-                XMLWriter::renderManifestNode($recycleNode);
-            }
-        }
 
         Logger::debug("LS Time : ".intval((microtime(true)-$startTime)*1000)."ms");
 

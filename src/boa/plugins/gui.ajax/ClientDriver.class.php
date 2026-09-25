@@ -328,6 +328,10 @@ class ClientDriver extends Plugin
         }
         $config["i18nMessages"] = ConfService::getMessages();
         $config["password_min_length"] = ConfService::getCoreConf("PASSWORD_MINLENGTH", "auth");
+        $config["remember_me_renew_days"] = AuthService::getRememberMeRenewDays();
+        $config["remember_me_days"] = AuthService::getRememberMeMaxDays();
+        $config["altcha_enabled"] = class_exists('\\BoA\\Plugins\\Action\\Altcha\\AltchaCenter')
+            && \BoA\Plugins\Action\Altcha\AltchaCenter::isProtectionActive();
         $config["SECURE_TOKEN"] = AuthService::generateSecureToken();
         $config["streaming_supported"] = "true";
         $config["theme"] = $this->pluginConf["GUI_THEME"];

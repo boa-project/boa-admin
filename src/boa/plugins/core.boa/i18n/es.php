@@ -560,6 +560,18 @@ $mess=array(
 "479" => "Remover",
 "480" => "Sin lenguaje",
 "481" => "Continuar",
+"482" => "¿Olvidó su contraseña?",
+"483" => "Introduzca su usuario o correo. Si existe una cuenta asociada, enviaremos un enlace para restablecer la clave.",
+"484" => "Usuario / Correo",
+"485" => "Introduzca su usuario o correo.",
+"486" => "Si esa cuenta existe, se envió un correo de restablecimiento.",
+"487" => "Restablecer contraseña",
+"488" => "Nueva contraseña (mín. %s caracteres)",
+"489" => "Confirmar contraseña",
+"490" => "Establecer contraseña",
+"491" => "Las contraseñas no coinciden.",
+"492" => "La solicitud falló.",
+"493" => "Verificación fallida. Inténtelo de nuevo.",
 "missing_app_secret_key" => "Falta la clave secreta de configuración de la aplicación"
 /* END SENTENCE */
 );

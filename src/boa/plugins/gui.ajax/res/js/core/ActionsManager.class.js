@@ -526,7 +526,8 @@ Class.create("ActionsManager", {
                     if(childs[i].getAttribute('remember_login') && childs[i].getAttribute('remember_pass')){
                         var login = childs[i].getAttribute('remember_login');
                         var pass = childs[i].getAttribute('remember_pass');
-                        storeRememberData(login, pass);
+                        var remExp = parseInt(childs[i].getAttribute('remember_expires'), 10);
+                        storeRememberData(login, pass, remExp > 0 ? remExp : undefined);
                     }
                     app.loadXmlRegistry();
                 }
@@ -544,6 +545,12 @@ Class.create("ActionsManager", {
                 }
                 else if(result == '-4'){
                     var errorId = 386;
+                }
+                else if(result == '-5'){
+                    clearRememberData();
+                }
+                else if(result == '-6'){
+                    var errorId = 493;
                 }
                 
                 if(errorId){

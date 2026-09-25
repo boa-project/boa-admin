@@ -46,13 +46,14 @@ CookieJar.prototype = {
 			this.options.expires = '; expires=' + date.toGMTString();
 		}
 		if (this.options.path != '') {
-			this.options.path = '; path=' + escape(this.options.path);
+			this.options.path = '; path=' + this.options.path;
 		}
 		if (this.options.domain != '') {
-			this.options.domain = '; domain=' + escape(this.options.domain);
+			this.options.domain = '; domain=' + this.options.domain;
 		}
-		if (this.options.secure == 'secure') {
-			this.options.secure = '; secure';
+		if (this.options.secure === true || this.options.secure === 'secure' || this.options.secure === 'true') {
+			var isHttps = (window.location && window.location.protocol === 'https:');
+			this.options.secure = isHttps ? '; secure' : '';
 		} else {
 			this.options.secure = '';
 		}
