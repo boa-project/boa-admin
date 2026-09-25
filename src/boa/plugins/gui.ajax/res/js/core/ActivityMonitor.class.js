@@ -82,12 +82,18 @@ Class.create("ActivityMonitor", {
 			this._state = 'inactive';
 			if(app.user) {
 				this._state = 'active';
-				$(document.body).observe("keypress", activityObserver );
-				$(document.body).observe("mouseover", activityObserver );
-				$(document.body).observe("mousemove", activityObserver );
-				document.observe("app:server_answer", activityObserver );
-				this.interval = window.setInterval(this.idleObserver.bind(this), 5000);
-				this.serverInterval = window.setInterval(this.serverObserver.bind(this), this._renewTime*1000);
+				// Remember Me: keep PHP session alive via ping, but do not idle-logout.
+				var rememberActive = (typeof retrieveRememberData === 'function' && retrieveRememberData() != null);
+				if(rememberActive){
+					this.serverInterval = window.setInterval(this.serverObserver.bind(this), this._renewTime*1000);
+				}else{
+					$(document.body).observe("keypress", activityObserver );
+					$(document.body).observe("mouseover", activityObserver );
+					$(document.body).observe("mousemove", activityObserver );
+					document.observe("app:server_answer", activityObserver );
+					this.interval = window.setInterval(this.idleObserver.bind(this), 5000);
+					this.serverInterval = window.setInterval(this.serverObserver.bind(this), this._renewTime*1000);
+				}
 			}
 		}.bind(this));
         document.observe("app:longtask_starting", function(){
